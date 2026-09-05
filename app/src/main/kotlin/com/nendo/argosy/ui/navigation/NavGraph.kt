@@ -260,7 +260,21 @@ fun NavGraph(
                 },
                 onNavigateToGame = { relatedGameId ->
                     navController.navigate(Screen.GameDetail.createRoute(relatedGameId))
+                },
+                onNavigateToVersionPicker = { versionGameId ->
+                    navController.navigate(Screen.VersionPicker.createRoute(versionGameId))
                 }
+            )
+        }
+
+        composable(
+            route = Screen.VersionPicker.route,
+            arguments = listOf(navArgument("gameId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val gameId = backStackEntry.arguments?.getLong("gameId") ?: return@composable
+            com.nendo.argosy.ui.screens.versionpicker.VersionPickerScreen(
+                gameId = gameId,
+                onBack = { navController.popBackStack() }
             )
         }
 

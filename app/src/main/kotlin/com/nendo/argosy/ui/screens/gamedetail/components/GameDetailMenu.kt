@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.InstallMobile
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Schedule
@@ -42,6 +43,8 @@ import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import com.nendo.argosy.util.formatBytes
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -74,7 +77,8 @@ data class MenuLayoutState(
     val hasSocialAccount: Boolean = false,
     val hasSaveSync: Boolean = false,
     val hasRelated: Boolean = false,
-    val hasPerGameSettings: Boolean = false
+    val hasPerGameSettings: Boolean = false,
+    val hasLiteBoxVersions: Boolean = false
 )
 
 sealed class MenuItem(
@@ -84,6 +88,9 @@ sealed class MenuItem(
     data object Play : MenuItem("play")
     data object Saves : MenuItem("saves", visibleWhen = { it.hasSaveSync })
     data object Favorite : MenuItem("favorite")
+    // LiteBox-only (RommLiteBoxApi.cs): a real RomM server never reports this, so it stays hidden
+    // for every official client — see the "sans casser la compatibilité" constraint in the plan.
+    data object VersionSwitch : MenuItem("version_switch", visibleWhen = { it.hasLiteBoxVersions })
     data object Privacy : MenuItem("privacy", visibleWhen = { it.hasSocialAccount })
     data object PerGameSettings : MenuItem("per_game_settings", visibleWhen = { it.hasPerGameSettings })
     data object Options : MenuItem("options")
@@ -96,7 +103,7 @@ sealed class MenuItem(
 
     companion object {
         val ALL: List<MenuItem>
-            get() = listOf(Play, Saves, Favorite, Privacy, PerGameSettings, Options, Details, Description, Screenshots, Reviews, Achievements, RelatedGames)
+            get() = listOf(Play, Saves, Favorite, VersionSwitch, Privacy, PerGameSettings, Options, Details, Description, Screenshots, Reviews, Achievements, RelatedGames)
     }
 }
 
@@ -116,7 +123,8 @@ data class GameDetailMenuState(
     val saveStatus: SaveStatusInfo? = null,
     val isSyncingSaves: Boolean = false,
     val downloadSizeBytes: Long? = null,
-    val isPrivate: Boolean = false
+    val isPrivate: Boolean = false,
+    val liteBoxVersionCount: Int = 0
 )
 
 @Composable
@@ -183,6 +191,15 @@ fun GameDetailMenu(
                 MenuItem.Favorite -> {
                     FavoriteMenuItem(
                         isFavorite = displayState.isFavorite,
+                        isFocused = isFocused,
+                        isCompact = isCompact,
+                        onClick = { onFocusChange(focusIndex); onItemClick(item) }
+                    )
+                }
+
+                MenuItem.VersionSwitch -> {
+                    VersionSwitchMenuItem(
+                        versionCount = displayState.liteBoxVersionCount,
                         isFocused = isFocused,
                         isCompact = isCompact,
                         onClick = { onFocusChange(focusIndex); onItemClick(item) }
@@ -592,6 +609,65 @@ private fun FavoriteMenuItem(
                     } else {
                         stringResource(R.string.gamedetail_menu_favorite_row_add_description)
                     },
+                    tint = iconTint,
+                    modifier = Modifier.size(Dimens.iconSm)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun VersionSwitchMenuItem(
+    versionCount: Int,
+    isFocused: Boolean,
+    isCompact: Boolean,
+    onClick: () -> Unit
+) {
+    val iconTint = if (isFocused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    val textColor = if (isFocused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    val textStyle = if (isFocused) {
+        MaterialTheme.typography.bodyMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+    } else {
+        MaterialTheme.typography.bodyMedium
+    }
+    val label = stringResource(R.string.gamedetail_menu_version_switch)
+
+    MenuItemWithLeftBorder(
+        isFocused = isFocused,
+        isCompact = isCompact,
+        onClick = onClick
+    ) {
+        if (isCompact) {
+            BadgedBox(badge = {
+                if (versionCount > 0) {
+                    Badge { Text(versionCount.toString()) }
+                }
+            }) {
+                Icon(
+                    imageVector = Icons.Default.Layers,
+                    contentDescription = stringResource(R.string.gamedetail_menu_version_switch_description, versionCount),
+                    tint = iconTint,
+                    modifier = Modifier.size(Dimens.iconSm)
+                )
+            }
+        } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = label,
+                    style = textStyle,
+                    color = textColor,
+                    modifier = Modifier.weight(1f)
+                )
+                if (versionCount > 0) {
+                    Badge(modifier = Modifier.padding(end = Dimens.spacingSm)) { Text(versionCount.toString()) }
+                }
+                Icon(
+                    imageVector = Icons.Default.Layers,
+                    contentDescription = label,
                     tint = iconTint,
                     modifier = Modifier.size(Dimens.iconSm)
                 )

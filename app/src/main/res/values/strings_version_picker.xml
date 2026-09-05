@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="version_picker_empty">This game has nothing to switch to.</string>
+    <string name="version_picker_footer_navigate">Navigate</string>
+    <string name="version_picker_footer_select">Select</string>
+    <string name="version_picker_footer_back">Back</string>
+    <string name="version_picker_footer_back_to_versions">Back to versions</string>
+</resources>

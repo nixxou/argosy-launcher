@@ -121,6 +121,7 @@ fun GameDetailScreen(
     onBack: () -> Unit,
     onNavigateToPlatformSettings: (platformId: Long) -> Unit = {},
     onNavigateToGame: (gameId: Long) -> Unit = {},
+    onNavigateToVersionPicker: (gameId: Long) -> Unit = {},
     viewModel: GameDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -232,6 +233,7 @@ fun GameDetailScreen(
         viewModel.createInputHandler(
             onBack = onBack,
             onNavigateToPlatformSettings = onNavigateToPlatformSettings,
+            onNavigateToVersionPicker = onNavigateToVersionPicker,
             onSnapUp = {
                 viewModel.moveMenuFocus(-1)
                 true
@@ -248,7 +250,8 @@ fun GameDetailScreen(
                     hasSocialAccount = uiState.hasSocialAccount,
                     hasSaveSync = hasSaveSync,
                     hasRelated = hasRelated,
-                    hasPerGameSettings = hasPerGameSettings
+                    hasPerGameSettings = hasPerGameSettings,
+                    hasLiteBoxVersions = uiState.hasLiteBoxVersions
                 )
                 when (menuLayout.itemAtFocusIndex(uiState.menuFocusIndex, layoutState)) {
                     MenuItem.Screenshots -> if (screenshotCount > 0) {
@@ -273,7 +276,8 @@ fun GameDetailScreen(
                     hasSocialAccount = uiState.hasSocialAccount,
                     hasSaveSync = hasSaveSync,
                     hasRelated = hasRelated,
-                    hasPerGameSettings = hasPerGameSettings
+                    hasPerGameSettings = hasPerGameSettings,
+                    hasLiteBoxVersions = uiState.hasLiteBoxVersions
                 )
                 when (menuLayout.itemAtFocusIndex(uiState.menuFocusIndex, layoutState)) {
                     MenuItem.Screenshots -> if (screenshotCount > 0) {
@@ -301,7 +305,8 @@ fun GameDetailScreen(
                     hasSocialAccount = uiState.hasSocialAccount,
                     hasSaveSync = hasSaveSync,
                     hasRelated = hasRelated,
-                    hasPerGameSettings = hasPerGameSettings
+                    hasPerGameSettings = hasPerGameSettings,
+                    hasLiteBoxVersions = uiState.hasLiteBoxVersions
                 )
                 menuLayout.itemAtFocusIndex(uiState.menuFocusIndex, layoutState) == MenuItem.Screenshots
             }
@@ -471,6 +476,7 @@ fun GameDetailScreen(
                 onBack = onBack,
                 onNavigateToPlatformSettings = onNavigateToPlatformSettings,
                 onNavigateToGame = onNavigateToGame,
+                onNavigateToVersionPicker = onNavigateToVersionPicker,
                 localModifiedFocusIndex = localModifiedFocusIndex
             )
         }
@@ -495,6 +501,7 @@ private fun GameDetailContent(
     onBack: () -> Unit,
     onNavigateToPlatformSettings: (Long) -> Unit,
     onNavigateToGame: (Long) -> Unit,
+    onNavigateToVersionPicker: (Long) -> Unit,
     localModifiedFocusIndex: Int
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -536,7 +543,8 @@ private fun GameDetailContent(
         hasSaveSync = contentHasSaveSync,
         hasRelated = uiState.relatedGames.isNotEmpty(),
         hasPerGameSettings = !game.isSteamGame && !game.isAndroidApp &&
-            uiState.downloadStatus == GameDownloadStatus.DOWNLOADED
+            uiState.downloadStatus == GameDownloadStatus.DOWNLOADED,
+        hasLiteBoxVersions = uiState.hasLiteBoxVersions
     )
 
     val menuDisplayState = GameDetailMenuState(
@@ -548,7 +556,8 @@ private fun GameDetailContent(
         saveStatus = uiState.saveStatusInfo,
         isSyncingSaves = uiState.isSyncingSaves,
         downloadSizeBytes = uiState.downloadSizeBytes,
-        isPrivate = uiState.isPrivate
+        isPrivate = uiState.isPrivate,
+        liteBoxVersionCount = uiState.liteBoxVersionCount
     )
 
     val focusedItem = menuLayout.itemAtFocusIndex(uiState.menuFocusIndex, menuLayoutState)
@@ -679,6 +688,7 @@ private fun GameDetailContent(
                                     MenuItem.Play -> viewModel.primaryAction()
                                     MenuItem.Saves -> viewModel.syncSavesNow()
                                     MenuItem.Favorite -> viewModel.toggleFavorite()
+                                    MenuItem.VersionSwitch -> onNavigateToVersionPicker(game.id)
                                     MenuItem.Privacy -> viewModel.togglePrivacy()
                                     MenuItem.PerGameSettings -> viewModel.showPerGameSettings()
                                     MenuItem.Options -> viewModel.toggleMoreOptions()
@@ -855,6 +865,7 @@ private fun GameDetailContent(
                     stringResource(R.string.gamedetail_footer_view_all_achievements)
                 val viewReviewsHint = stringResource(R.string.gamedetail_footer_view_reviews)
                 val openRelatedHint = stringResource(R.string.gamedetail_footer_open_related)
+                val versionSwitchHint = stringResource(R.string.gamedetail_footer_version_switch)
                 val backHint = stringResource(R.string.gamedetail_footer_back)
                 val newGameHint = stringResource(R.string.gamedetail_footer_new_game)
                 val shortcutMakePublicHint =
@@ -894,6 +905,7 @@ private fun GameDetailContent(
                             MenuItem.Reviews -> add(InputButton.A to viewReviewsHint)
                             MenuItem.Achievements -> add(InputButton.A to viewAllAchievementsHint)
                             MenuItem.RelatedGames -> add(InputButton.A to openRelatedHint)
+                            MenuItem.VersionSwitch -> add(InputButton.A to versionSwitchHint)
                             MenuItem.Details, MenuItem.Description, null -> {}
                         }
                         add(InputButton.B to backHint)
@@ -909,6 +921,8 @@ private fun GameDetailContent(
                             InputButton.A -> {
                                 if (focusedItem == MenuItem.RelatedGames) {
                                     viewModel.focusedRelatedGameId()?.let(onNavigateToGame)
+                                } else if (focusedItem == MenuItem.VersionSwitch) {
+                                    onNavigateToVersionPicker(game.id)
                                 } else {
                                     viewModel.executeMenuAction()
                                 }

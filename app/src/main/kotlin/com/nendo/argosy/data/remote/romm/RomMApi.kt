@@ -366,4 +366,28 @@ interface RomMApi {
     suspend fun getSyncSession(
         @Path("id") sessionId: Long
     ): Response<RomMSyncSession>
+
+    // LiteBox-only extensions (never answered by an official RomM server — see LiteBoxRepository's
+    // own header for how that is detected safely). "main" names the game's own ROM in the versions/
+    // roms path, since a path segment cannot be empty.
+
+    @GET("api/litebox/capabilities")
+    suspend fun getLiteBoxCapabilities(): Response<LiteBoxCapabilitiesResponse>
+
+    @GET("api/litebox/roms/{id}/versions")
+    suspend fun getLiteBoxVersions(
+        @Path("id") romId: Long
+    ): Response<List<LiteBoxVersion>>
+
+    @GET("api/litebox/roms/{id}/versions/{appId}/roms")
+    suspend fun getLiteBoxRomsInVersion(
+        @Path("id") romId: Long,
+        @Path("appId", encoded = true) appId: String
+    ): Response<List<LiteBoxRomEntry>>
+
+    @POST("api/litebox/roms/{id}/pin")
+    suspend fun pinLiteBoxVersion(
+        @Path("id") romId: Long,
+        @Body body: LiteBoxPinRequest
+    ): Response<LiteBoxPinResponse>
 }

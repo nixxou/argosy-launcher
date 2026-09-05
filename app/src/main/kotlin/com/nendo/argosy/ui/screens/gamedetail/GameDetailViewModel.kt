@@ -604,6 +604,17 @@ class GameDetailViewModel @Inject constructor(
 
             variantScanner.scanForVariants(game)
             val hasVariants = variantResolver.getVariantOptions(game) != null
+
+            // LiteBox-only: cheap once capabilities are cached (see LiteBoxService), a no-op network
+            // call away for an official RomM server or a game this account never actually holds here.
+            val liteBoxVersions = if (game.rommId != null
+                    && com.nendo.argosy.util.NetworkUtils.isOnline(context)
+                    && romMRepository.liteBoxSupportsVersionSwitch()
+            ) {
+                (romMRepository.liteBoxListVersions(game.rommId) as? RomMResult.Success)?.data ?: emptyList()
+            } else {
+                emptyList()
+            }
             val manageableFileCount = gameFileDao.getFilesForGame(gameId).size
 
             val downloadSizeBytes = when {
@@ -651,6 +662,8 @@ class GameDetailViewModel @Inject constructor(
                     dlcFiles = dlcFilesUi,
                     hasManageableFiles = manageableFileCount > 0,
                     hasVariants = hasVariants,
+                    hasLiteBoxVersions = liteBoxVersions.size > 1,
+                    liteBoxVersionCount = liteBoxVersions.size,
                     siblingGameIds = siblingIds,
                     currentGameIndex = currentIndex,
                     isPrivate = isPrivate,
@@ -1845,7 +1858,8 @@ class GameDetailViewModel @Inject constructor(
             hasSaveSync = hasSaveSync,
             hasRelated = state.relatedGames.isNotEmpty(),
             hasPerGameSettings = game != null && !game.isSteamGame && !game.isAndroidApp &&
-                state.downloadStatus == GameDownloadStatus.DOWNLOADED
+                state.downloadStatus == GameDownloadStatus.DOWNLOADED,
+            hasLiteBoxVersions = state.hasLiteBoxVersions
         )
     }
 
@@ -1879,6 +1893,9 @@ class GameDetailViewModel @Inject constructor(
             MenuItem.Reviews -> showReviewList()
             MenuItem.Achievements -> showAchievementList()
             MenuItem.RelatedGames -> {}
+            // Navigation is decided by the caller (it needs the game id, which this ViewModel-level
+            // action has no way to hand back) — see onConfirm/onHintClick, same as RelatedGames above.
+            MenuItem.VersionSwitch -> {}
             null -> {}
         }
     }
@@ -2188,7 +2205,8 @@ class GameDetailViewModel @Inject constructor(
         onPrevGame: () -> Unit = {},
         onNextGame: () -> Unit = {},
         isInScreenshotsSection: () -> Boolean = { false },
-        onNavigateToGame: (Long) -> Unit = {}
+        onNavigateToGame: (Long) -> Unit = {},
+        onNavigateToVersionPicker: (Long) -> Unit = {}
     ): InputHandler = object : InputHandler {
         override fun onUp(): InputResult {
             val state = _uiState.value
@@ -2399,6 +2417,8 @@ class GameDetailViewModel @Inject constructor(
                 state.showMoreOptions -> confirmOptionSelection(onBack, onNavigateToPlatformSettings)
                 menuLayout.itemAtFocusIndex(state.menuFocusIndex, menuLayoutState()) == MenuItem.RelatedGames ->
                     focusedRelatedGameId()?.let(onNavigateToGame)
+                menuLayout.itemAtFocusIndex(state.menuFocusIndex, menuLayoutState()) == MenuItem.VersionSwitch ->
+                    state.game?.id?.let(onNavigateToVersionPicker)
                 else -> executeMenuAction()
             }
             return InputResult.HANDLED
