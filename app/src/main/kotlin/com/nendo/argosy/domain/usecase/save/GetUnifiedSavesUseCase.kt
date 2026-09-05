@@ -158,7 +158,15 @@ class GetUnifiedSavesUseCase @Inject constructor(
                 null
             }
 
-            val localIsArchival = channelName == null && !cache.isHardcore
+            // A null-channel cache with nothing newer under it IS the autosave/latest entry (server
+            // saves classify the very same way — isLatestSlot treats "autosave" as the latest, not a
+            // named channel), not history: only an OLDER null-channel cache is truly archival. Without
+            // isMostRecentForChannel here, PrefetchGameSaveDataUseCase's own download of a fresh
+            // autosave save (channelName null, by the same isLatestSaveFileName rule) got buried as
+            // isArchival — which resolveActiveEntry then excludes from its candidates outright, so a
+            // brand new pairing's launch picked whatever OTHER named channel was left instead of the
+            // autosave save that was actually the newest thing that existed.
+            val localIsArchival = channelName == null && !isMostRecentForChannel && !cache.isHardcore
 
             if (matchingServer != null) {
                 usedServerIds.add(matchingServer.id)
@@ -350,7 +358,13 @@ fun resolveActiveEntry(
             .filter { it.channelName != null && equalsNormalized(it.channelName, namedChannel) }
             .maxByOrNull { it.timestamp }
     }
+    // No explicit coordinate names autosave here, but it is still the assumed default the same way
+    // an explicit "autosave" activeChannel would be (see isAutosaveChannel: null and "autosave" are
+    // the same bucket) -- an exact coordinate too, per the comment above, so it never falls through
+    // to some OTHER named channel just because that one happens to hold something newer. Mehdi,
+    // 2026-09-05: "autosave devrait etre selectionne par defaut dans tous les cas, meme quand la
+    // branche autosave n'existe pas sur le serveur" -- nothing in the bucket means no active save,
+    // not "whichever branch is left".
     candidates.firstOrNull { it.isLatest }?.let { return it }
-    candidates.filter { it.channelName == null }.maxByOrNull { it.timestamp }?.let { return it }
-    return candidates.maxByOrNull { it.timestamp }
+    return candidates.filter { it.channelName == null }.maxByOrNull { it.timestamp }
 }

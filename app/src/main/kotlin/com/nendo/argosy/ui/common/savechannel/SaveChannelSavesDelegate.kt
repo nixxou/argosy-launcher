@@ -70,7 +70,13 @@ class SaveChannelSavesDelegate @Inject constructor(
         val namedChannels = channelGroups.filterKeys { it != null }
             .toSortedMap(compareBy { it?.lowercase() })
 
-        val autosaveSaves = namedChannels[SaveSyncApiClient.AUTOSAVE_SLOT_NAME] ?: emptyList()
+        // The merge (GetUnifiedSavesUseCase) never leaves a real save under channelName == "autosave" —
+        // isLatestSaveFileName treats that string (and the ROM's own base name) as "the latest, no
+        // channel", so a matching entry always lands in channelGroups[null] instead. isAutosaveChannel
+        // already says these two are the same bucket; this is the one place that still only looked at
+        // half of it, so the Autosave row stayed empty even when the server held real content under it.
+        val autosaveSaves = (channelGroups[null] ?: emptyList()).filterNot { it.isArchival } +
+            (namedChannels[SaveSyncApiClient.AUTOSAVE_SLOT_NAME] ?: emptyList())
         val effectiveActiveChannel = activeChannel ?: SaveSyncApiClient.AUTOSAVE_SLOT_NAME
         slotItems.add(
             SaveSlotItem(
