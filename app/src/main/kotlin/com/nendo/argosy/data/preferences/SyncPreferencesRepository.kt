@@ -34,6 +34,11 @@ data class SyncPreferences(
     val boxArtCacheEnabled: Boolean = true,
     val saveSyncEnabled: Boolean = false,
     val secureSaves: Boolean = true,
+    // Mehdi, 2026-09-05: the built-in core's own AUTO_SLOT/RESUME_SLOT quicksaves know nothing about
+    // the SRAM save changing under them (a server pull, a history restore, a channel switch) — left
+    // alone they resume play from a moment the save file can no longer back up. Default on: this is a
+    // safety net, not a behavior change anyone opted out of before it existed.
+    val protectAgainstStaleResume: Boolean = true,
     val stateCacheEnabled: Boolean = true,
     val saveCacheLimit: Int = 10,
     val saveWatcherEnabled: Boolean = false,
@@ -96,6 +101,7 @@ class SyncPreferencesRepository @Inject constructor(
         val BOX_ART_CACHE_ENABLED = booleanPreferencesKey("box_art_cache_enabled")
         val SAVE_SYNC_ENABLED = booleanPreferencesKey("save_sync_enabled")
         val SECURE_SAVES = booleanPreferencesKey("secure_saves")
+        val PROTECT_AGAINST_STALE_RESUME = booleanPreferencesKey("protect_against_stale_resume")
         val STATE_CACHE_ENABLED = booleanPreferencesKey("state_cache_enabled")
         val SAVE_CACHE_LIMIT = intPreferencesKey("save_cache_limit")
         val SAVE_WATCHER_ENABLED = booleanPreferencesKey("save_watcher_enabled")
@@ -288,6 +294,7 @@ class SyncPreferencesRepository @Inject constructor(
             uploadScreenshotsEnabled = prefs[Keys.UPLOAD_SCREENSHOTS_ENABLED] ?: true,
             saveSyncEnabled = prefs[Keys.SAVE_SYNC_ENABLED] ?: false,
             secureSaves = prefs[Keys.SECURE_SAVES] ?: true,
+            protectAgainstStaleResume = prefs[Keys.PROTECT_AGAINST_STALE_RESUME] ?: true,
             stateCacheEnabled = prefs[Keys.STATE_CACHE_ENABLED] ?: true,
             saveCacheLimit = prefs[Keys.SAVE_CACHE_LIMIT] ?: 10,
             saveWatcherEnabled = prefs[Keys.SAVE_WATCHER_ENABLED] ?: false,
@@ -524,6 +531,13 @@ class SyncPreferencesRepository @Inject constructor(
 
     suspend fun setSecureSaves(enabled: Boolean) {
         dataStore.edit { it[Keys.SECURE_SAVES] = enabled }
+    }
+
+    suspend fun isProtectAgainstStaleResume(): Boolean =
+        dataStore.data.map { it[Keys.PROTECT_AGAINST_STALE_RESUME] ?: true }.first()
+
+    suspend fun setProtectAgainstStaleResume(enabled: Boolean) {
+        dataStore.edit { it[Keys.PROTECT_AGAINST_STALE_RESUME] = enabled }
     }
 
     suspend fun setStateCacheEnabled(enabled: Boolean) {

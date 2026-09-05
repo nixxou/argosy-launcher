@@ -50,8 +50,44 @@ class SaveDownloader @Inject constructor(
     private val gciSaveHandler: GciSaveHandler,
     private val apiClient: dagger.Lazy<SaveSyncApiClient>,
     private val saveUploader: dagger.Lazy<SaveUploader>,
-    private val emulatorSaveConfigRepository: EmulatorSaveConfigRepository
+    private val emulatorSaveConfigRepository: EmulatorSaveConfigRepository,
+    private val stateCacheManager: dagger.Lazy<StateCacheManager>
 ) {
+
+    /**
+     * The built-in core's own AUTO_SLOT/RESUME_SLOT describe a moment that assumed the save this
+     * download is about to replace. When the content genuinely changes (compared by hash, the same
+     * signal every other sync decision here already trusts), that assumption no longer holds -- the
+     * next launch must not silently resume from a point the save no longer agrees with.
+     *
+     * Mehdi, 2026-09-05: "efface l'autosave si lors d'une syncro, ca pull du serveur une save qui va
+     * aller remplacer la save existante". Gated on [SyncPreferencesRepository.isProtectAgainstStaleResume]
+     * (default on) and skipped for anything but "builtin" -- an external app's own resume state is
+     * not ours to touch, and StatePathRegistry has no config for it anyway.
+     */
+    private suspend fun clearResumeStateIfContentChanged(
+        emulatorId: String,
+        previousHash: String?,
+        newHash: String?,
+        romPath: String?,
+        platformSlug: String,
+        emulatorPackage: String?,
+        coreId: String?,
+        gameId: Long
+    ) {
+        if (emulatorId != "builtin") return
+        if (previousHash == null || newHash == null || previousHash == newHash) return
+        if (!syncPreferencesRepository.isProtectAgainstStaleResume()) return
+        if (romPath == null) return
+        stateCacheManager.get().deleteAutoResumeStatesFromDisk(
+            emulatorId = emulatorId,
+            romPath = romPath,
+            platformSlug = platformSlug,
+            emulatorPackage = emulatorPackage,
+            coreId = coreId,
+            gameId = gameId
+        )
+    }
 
     /**
      * The folder the user pointed this emulator at, keyed by the platform-aware config id so a
@@ -303,6 +339,16 @@ class SaveDownloader @Inject constructor(
                         saveCacheDao.updateCachedAt(cachedMatch.id, serverTimestamp)
                     }
                     activeSaveRepository.activateCache(gameId, cachedMatch.id)
+                    clearResumeStateIfContentChanged(
+                        emulatorId = resolvedEmulatorId,
+                        previousHash = syncEntity.localContentHash,
+                        newHash = serverSave.contentHash,
+                        romPath = game.localPath,
+                        platformSlug = game.platformSlug,
+                        emulatorPackage = emulatorPackage,
+                        coreId = preferredCore,
+                        gameId = gameId
+                    )
                     Logger.info(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Complete (cache-hit) | path=$preDownloadTargetPath")
                     return@withContext SaveSyncResult.Success(rommSaveId = serverSave.id, serverTimestamp = serverTimestamp)
                 }
@@ -689,6 +735,17 @@ class SaveDownloader @Inject constructor(
                 )
             )
             confirmDeviceSynced(serverSave.id)
+
+            clearResumeStateIfContentChanged(
+                emulatorId = resolvedEmulatorId,
+                previousHash = syncEntity.localContentHash,
+                newHash = serverSave.contentHash,
+                romPath = game.localPath,
+                platformSlug = game.platformSlug,
+                emulatorPackage = emulatorPackage,
+                coreId = preferredCore,
+                gameId = gameId
+            )
 
             Logger.info(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Complete | path=$targetPath, channel=$effectiveChannelName")
 

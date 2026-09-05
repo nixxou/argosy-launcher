@@ -2469,10 +2469,31 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * Whether [slotFile] describes a moment BEFORE the SRAM save now on disk — in which case loading
+     * it would silently roll play back past a save that arrived since (a server pull, a history
+     * restore, a channel switch: anything that can replace the SRAM file out from under this core's
+     * own idea of "where we left off"). Deletes the stale file too: it can never legitimately apply
+     * again once something newer than it exists.
+     *
+     * Mehdi, 2026-09-05: "bloque le chargement de l'autosave si la save est plus recente que le
+     * fichier d'autosave". Gated on [SyncPreferences.protectAgainstStaleResume] (default on).
+     */
+    private fun isStaleAgainstSram(slotFile: File): Boolean {
+        if (!launchPreferences.protectAgainstStaleResume) return false
+        val sramFile = saveStateManager.getSramFile()
+        if (!sramFile.exists() || sramFile.lastModified() <= slotFile.lastModified()) return false
+        Log.w(TAG, "Discarding stale resume state (older than the SRAM save): ${slotFile.absolutePath}")
+        slotFile.delete()
+        File("${slotFile.absolutePath}.png").takeIf { it.exists() }?.delete()
+        return true
+    }
+
     private fun attemptAutoRestore() {
         if (isGuestJoinedSession) return
         val resumeFile = saveStateManager.getSlotFile(SaveStateManager.RESUME_SLOT)
         if (resumeFile.exists()) {
+            if (isStaleAgainstSram(resumeFile)) return
             if (!canSerialize) {
                 Log.w(TAG, "One-shot resume state kept: core=$resolvedCoreId cannot load it in this session")
                 return
@@ -2489,6 +2510,7 @@ class LibretroActivity : ComponentActivity() {
         if (launchMode != LaunchMode.RESUME || !canSerialize) return
         val autoFile = saveStateManager.getSlotFile(SaveStateManager.AUTO_SLOT)
         if (!autoFile.exists()) return
+        if (isStaleAgainstSram(autoFile)) return
 
         val settings = kotlinx.coroutines.runBlocking {
             effectiveLibretroSettingsResolver.getEffectiveSettings(platformId, platformSlug)

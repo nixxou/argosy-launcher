@@ -6,7 +6,9 @@ import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.repository.SaveCacheManager
 import com.nendo.argosy.data.repository.SaveSyncRepository
 import com.nendo.argosy.data.repository.SaveSyncResult
+import com.nendo.argosy.data.repository.StateCacheManager
 import com.nendo.argosy.domain.model.UnifiedSaveEntry
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
 /**
@@ -27,7 +29,9 @@ class RestoreCachedSaveUseCase @Inject constructor(
     private val saveSyncRepository: SaveSyncRepository,
     private val gameDao: GameDao,
     private val activeSaveRepository: com.nendo.argosy.data.repository.ActiveSaveRepository,
-    private val emulatorResolver: EmulatorResolver
+    private val emulatorResolver: EmulatorResolver,
+    private val stateCacheManager: StateCacheManager,
+    private val preferencesRepository: com.nendo.argosy.data.preferences.UserPreferencesRepository
 ) {
     private val TAG = "RestoreCachedSaveUseCase"
 
@@ -72,6 +76,10 @@ class RestoreCachedSaveUseCase @Inject constructor(
             UnifiedSaveEntry.Source.BOTH -> entry.localCacheId?.let { saveCacheManager.archiveRootNames(it) }
             UnifiedSaveEntry.Source.SERVER -> null
         }
+        // Captured before the clear below overwrites it -- the only way to know afterward whether
+        // this restore actually CHANGED the content, versus re-landing the same bytes that are
+        // already active (a no-op that must not go nuking the built-in core's own resume state).
+        val previousHash = saveCacheManager.calculateLocalSaveHash(targetPath)
         if (!saveSyncRepository.clearSavesBeforeRestore(targetPath, game.platformSlug, game.saveId ?: game.titleId, archiveRoots)) {
             return Result.Error(RestoreCachedSaveFailureReason.ClearExistingSaveFailed)
         }
@@ -122,6 +130,26 @@ class RestoreCachedSaveUseCase @Inject constructor(
             UnifiedSaveEntry.Source.LOCAL,
             UnifiedSaveEntry.Source.BOTH -> cachedHash ?: saveCacheManager.calculateLocalSaveHash(targetPath)
             UnifiedSaveEntry.Source.SERVER -> null
+        }
+
+        // The built-in core's own AUTO_SLOT/RESUME_SLOT describe a moment that assumed the PREVIOUS
+        // save -- a restore that actually changed the content invalidates that assumption the same
+        // way a server pull does (see SaveDownloader.downloadSave and LibretroActivity's own launch-
+        // time check). Skipped when the hash could not be read on either side: silence must not read
+        // as "definitely different" and wipe a resume state a plain no-op restore should have left
+        // alone.
+        if (emulatorId == "builtin" &&
+            preferencesRepository.userPreferences.first().protectAgainstStaleResume &&
+            previousHash != null && restoredContentHash != null && previousHash != restoredContentHash
+        ) {
+            stateCacheManager.deleteAutoResumeStatesFromDisk(
+                emulatorId = emulatorId,
+                romPath = game.localPath,
+                platformSlug = game.platformSlug,
+                emulatorPackage = emulatorPackage,
+                coreId = coreName,
+                gameId = gameId
+            )
         }
 
         val targetChannel = entry.channelName
