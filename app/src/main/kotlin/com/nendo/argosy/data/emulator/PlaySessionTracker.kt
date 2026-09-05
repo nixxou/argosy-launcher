@@ -522,7 +522,14 @@ class PlaySessionTracker @Inject constructor(
             sessionServiceMutex.withLock {
                 val game = gameDao.getById(gameId)
                 val activeSave = activeSaveRepository.getActiveRow(gameId)
-                val channelName = if (isHardcore || variantFileId != null) null else activeSave?.channelName
+                // getActiveRow only ever points at a CACHE row, so it reads null the instant a channel
+                // has nothing cached in it yet (activateChannel clears that row for an empty channel —
+                // see ActiveSaveRepository). getActiveChannel falls back to the channel REGISTRY in
+                // that case, which still correctly names whatever the user just picked — this session
+                // otherwise locks in a null channel forever and the save it produces lands wherever the
+                // upload's own fallback resolves to, never the channel that was actually selected.
+                val channelName = if (isHardcore || variantFileId != null) null
+                    else activeSaveRepository.getActiveChannel(gameId)
 
                 _activeSession.value = _activeSession.value?.copy(channelName = channelName)
 
