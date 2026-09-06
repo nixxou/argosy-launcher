@@ -396,6 +396,14 @@ interface GameDao {
     @Query("SELECT * FROM games WHERE platformId = :platformId AND liteboxGameId = :liteboxGameId")
     suspend fun getByLiteboxGameId(platformId: Long, liteboxGameId: String): List<GameEntity>
 
+    /** Rows preserveOrphanedGame detached (synthetic negative rommId) that no LiteBox pass has claimed yet. */
+    @Query("SELECT * FROM games WHERE platformId = :platformId AND rommId < 0 AND liteboxGameId IS NULL AND liteboxSupersededBy IS NULL")
+    suspend fun getUnclaimedDetachedRows(platformId: Long): List<GameEntity>
+
+    /** Rows this client is currently served on a platform, with their LiteBox game key. */
+    @Query("SELECT * FROM games WHERE platformId = :platformId AND rommId > 0 AND syncDirty = 0 AND liteboxGameId IS NOT NULL")
+    suspend fun getServedKeyedRows(platformId: Long): List<GameEntity>
+
     @Query("SELECT id, rommId FROM games WHERE rommId IS NOT NULL")
     suspend fun getRommIdMappings(): List<RommIdMapping>
 
