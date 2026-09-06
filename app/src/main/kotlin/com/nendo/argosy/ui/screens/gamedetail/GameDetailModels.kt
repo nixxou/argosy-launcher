@@ -114,7 +114,11 @@ data class GameDetailUi(
     val titleId: String? = null,
     val igdbId: Long? = null,
     val steamAppId: Long? = null,
-    val rommFileName: String? = null
+    val rommFileName: String? = null,
+    /** What is shown under the cover on the game page (Mehdi, 2026-09-06): the server's file name
+     * when the game came from RomM/LiteBox, else the local file's own name. Null when neither exists
+     * (an Android app, a Steam game). */
+    val fileName: String? = null
 )
 
 sealed class LaunchEvent {

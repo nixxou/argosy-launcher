@@ -90,6 +90,8 @@ fun GameEntity.toGameDetailUi(
         titleId = displayTitleId,
         igdbId = igdbId,
         steamAppId = steamAppId,
-        rommFileName = rommFileName
+        rommFileName = rommFileName,
+        fileName = rommFileName?.takeIf { it.isNotBlank() }
+            ?: localPath?.substringAfterLast('/')?.substringAfterLast('\\')?.takeIf { it.isNotBlank() }
     )
 }
