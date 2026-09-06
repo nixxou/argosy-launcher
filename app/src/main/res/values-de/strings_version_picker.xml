@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="version_picker_empty">Dieses Spiel hat keine weitere Version.</string>
+    <string name="version_picker_footer_navigate">Navigieren</string>
+    <string name="version_picker_footer_select">Auswählen</string>
+    <string name="version_picker_footer_back">Zurück</string>
+    <string name="version_picker_footer_back_to_versions">Zurück zu den Versionen</string>
+</resources>

@@ -5,7 +5,7 @@ import com.squareup.moshi.JsonClass
 /**
  * Wire shapes for LiteBox's own `/api/litebox/...` extensions — never part of the RomM contract, so
  * these fields are camelCase as LiteBox actually sends them rather than RomM's usual snake_case; no
- * official server answers this path at all (see LiteBoxRepository's own header for why that is safe
+ * official server answers this path at all (see LiteBoxService's own header for why that is safe
  * to probe for).
  */
 @JsonClass(generateAdapter = true)

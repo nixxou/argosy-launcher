@@ -24,28 +24,36 @@ class LiteBoxService @Inject constructor(
 ) {
     private val api: RomMApi? get() = connectionManager.getApi()
 
-    /** Cached per connection: this answer cannot change without a new server, and every game detail
-     * page asking again would be a heartbeat-shaped request per screen open. Reset on disconnect by
-     * simply never being read before the next successful [capabilities] call replaces it. */
+    /** Cached per SERVER: keyed on the RomMApi instance, which RomMConnectionManager rebuilds for a
+     * new connection — so a re-pair to a different server re-probes instead of inheriting the old
+     * answer. Only a real HTTP answer is kept (200 = LiteBox, 404/501 = an official server saying
+     * no); a network failure is never cached, otherwise the first Game Detail opened while offline
+     * would hide the feature for the rest of the process (the first version of this did exactly
+     * that). */
     @Volatile
-    private var cached: LiteBoxCapabilitiesResponse? = null
+    private var cached: Pair<RomMApi, LiteBoxCapabilitiesResponse>? = null
 
-    fun supportsVersionSwitch(): Boolean = cached?.features?.contains("version-switch") == true
+    fun supportsVersionSwitch(): Boolean {
+        val client = api ?: return false
+        val c = cached ?: return false
+        return c.first === client && c.second.features.contains("version-switch")
+    }
 
     suspend fun capabilities(): LiteBoxCapabilitiesResponse {
-        cached?.let { return it }
+        val client = api ?: return LiteBoxCapabilitiesResponse()
+        cached?.let { if (it.first === client) return it.second }
         val response = try {
-            api?.getLiteBoxCapabilities()
+            client.getLiteBoxCapabilities()
         } catch (e: Exception) {
-            Logger.debug(TAG, "capabilities probe failed (official RomM server, or offline): ${e.message}")
-            null
+            Logger.debug(TAG, "capabilities probe failed (offline?), not cached: ${e.message}")
+            return LiteBoxCapabilitiesResponse()
         }
-        val result = if (response?.isSuccessful == true) {
+        val result = if (response.isSuccessful) {
             response.body() ?: LiteBoxCapabilitiesResponse()
         } else {
             LiteBoxCapabilitiesResponse()
         }
-        cached = result
+        cached = client to result
         return result
     }
 

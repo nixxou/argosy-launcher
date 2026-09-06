@@ -2,6 +2,7 @@ package com.nendo.argosy.ui.screens.versionpicker
 
 import com.nendo.argosy.data.remote.romm.LiteBoxRomEntry
 import com.nendo.argosy.data.remote.romm.LiteBoxVersion
+import com.nendo.argosy.util.formatBytes
 
 /**
  * One flattened row the picker renders — either a top-level version or, once drilled into one, a
@@ -30,7 +31,7 @@ data class VersionPickerUiState(
 
 internal fun LiteBoxVersion.toRow() = VersionPickerRow(
     label = label,
-    subtitle = null,
+    subtitle = detailLine(label, fileName, size),
     isPinned = isPinned,
     isDrillable = mayHaveRoms,
     appId = appId,
@@ -39,9 +40,19 @@ internal fun LiteBoxVersion.toRow() = VersionPickerRow(
 
 internal fun LiteBoxRomEntry.toRow(appId: String) = VersionPickerRow(
     label = label,
-    subtitle = null,
+    subtitle = detailLine(label, fileName, size),
     isPinned = isPinned,
     isDrillable = false,
     appId = appId,
     path = path
 )
+
+/** What tells two near-identical labels apart in a list of 92: the real file name (only when it
+ * is not just the label again) and its size. Null when neither adds anything. */
+private fun detailLine(label: String, fileName: String, size: Long): String? {
+    val parts = buildList {
+        if (fileName.isNotBlank() && !fileName.equals(label, ignoreCase = true)) add(fileName)
+        if (size > 0) add(formatBytes(size))
+    }
+    return parts.takeIf { it.isNotEmpty() }?.joinToString(" · ")
+}

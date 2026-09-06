@@ -604,17 +604,6 @@ class GameDetailViewModel @Inject constructor(
 
             variantScanner.scanForVariants(game)
             val hasVariants = variantResolver.getVariantOptions(game) != null
-
-            // LiteBox-only: cheap once capabilities are cached (see LiteBoxService), a no-op network
-            // call away for an official RomM server or a game this account never actually holds here.
-            val liteBoxVersions = if (game.rommId != null
-                    && com.nendo.argosy.util.NetworkUtils.isOnline(context)
-                    && romMRepository.liteBoxSupportsVersionSwitch()
-            ) {
-                (romMRepository.liteBoxListVersions(game.rommId) as? RomMResult.Success)?.data ?: emptyList()
-            } else {
-                emptyList()
-            }
             val manageableFileCount = gameFileDao.getFilesForGame(gameId).size
 
             val downloadSizeBytes = when {
@@ -662,8 +651,11 @@ class GameDetailViewModel @Inject constructor(
                     dlcFiles = dlcFilesUi,
                     hasManageableFiles = manageableFileCount > 0,
                     hasVariants = hasVariants,
-                    hasLiteBoxVersions = liteBoxVersions.size > 1,
-                    liteBoxVersionCount = liteBoxVersions.size,
+                    // Reset here, filled in by refreshLiteBoxVersionsInBackground once the server
+                    // answers — this ViewModel is reused across next/previous game, so a stale
+                    // count from the last game must not survive into this one.
+                    hasLiteBoxVersions = false,
+                    liteBoxVersionCount = 0,
                     siblingGameIds = siblingIds,
                     currentGameIndex = currentIndex,
                     isPrivate = isPrivate,
@@ -671,6 +663,8 @@ class GameDetailViewModel @Inject constructor(
                     syncScreenshotsEnabled = prefs.syncScreenshotsEnabled
                 )
             }
+
+            refreshLiteBoxVersionsInBackground(game)
 
             if (game.rommId != null || game.effectiveRaId != null || RAConsoleIds.isSupported(game.platformSlug)) {
                 refreshAchievementsInBackground(game.rommId, gameId)
@@ -1897,6 +1891,27 @@ class GameDetailViewModel @Inject constructor(
             // action has no way to hand back) — see onConfirm/onHintClick, same as RelatedGames above.
             MenuItem.VersionSwitch -> {}
             null -> {}
+        }
+    }
+
+    /**
+     * LiteBox-only, off the load path: Game Detail renders first and the version-switch entry
+     * appears once the server has answered (it is the LAST menu item, so its arrival shifts no other
+     * focus index). A no-op for an official RomM server (the capability probe says no, and says so
+     * cheaply — cached per server in LiteBoxService) and when offline.
+     */
+    private fun refreshLiteBoxVersionsInBackground(game: com.nendo.argosy.data.local.entity.GameEntity) {
+        val rommId = game.rommId ?: return
+        if (!com.nendo.argosy.util.NetworkUtils.isOnline(context)) return
+        viewModelScope.launch {
+            if (!romMRepository.liteBoxSupportsVersionSwitch()) return@launch
+            val versions = (romMRepository.liteBoxListVersions(rommId) as? RomMResult.Success)?.data
+                ?: return@launch
+            _uiState.update { state ->
+                // The user may have moved to the next game while this was in flight.
+                if (state.game?.id != game.id) state
+                else state.copy(hasLiteBoxVersions = versions.size > 1, liteBoxVersionCount = versions.size)
+            }
         }
     }
 

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="version_picker_empty">此遊戲沒有其他版本。</string>
+    <string name="version_picker_footer_navigate">導覽</string>
+    <string name="version_picker_footer_select">選擇</string>
+    <string name="version_picker_footer_back">返回</string>
+    <string name="version_picker_footer_back_to_versions">返回版本清單</string>
+</resources>

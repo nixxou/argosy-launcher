@@ -83,9 +83,10 @@ class VersionPickerViewModel @Inject constructor(
 
     private fun drillInto(row: VersionPickerRow) {
         if (_uiState.value.isApplying) return
+        // Checked BEFORE the spinner goes up: bailing out after it would leave it up for good.
+        val id = rommId ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isApplying = true) }
-            val id = rommId ?: return@launch
             when (val result = romMRepository.liteBoxListRomsInVersion(id, row.appId)) {
                 is RomMResult.Success -> {
                     _uiState.update {
@@ -111,14 +112,26 @@ class VersionPickerViewModel @Inject constructor(
         return true
     }
 
+    /** A tap on a row: move the highlight there first (so the screen shows what is being acted on),
+     * then do exactly what A does on the focused row — drill in, or pin. */
+    fun selectRow(index: Int, onSwitched: (Long) -> Unit) {
+        if (index !in _uiState.value.rows.indices) return
+        _uiState.update { it.copy(focusIndex = index) }
+        confirmFocused(onSwitched)
+    }
+
     /**
-     * Pins the focused row, then re-syncs the game's platform (Mehdi: "redirige automatiquement sur
-     * la nouvelle page du jeu post synchronisation plateforme") before handing control back to the
-     * caller. [onDone] runs regardless of outcome — a failed pin still needs the screen to stop
-     * showing a spinner — [onNavigateBack] only on success, since staying on the picker after a
-     * failure is what lets the user retry or pick something else.
+     * Pins the focused row, re-syncs the game's platform, then hands the caller the game to show
+     * next (Mehdi: "redirige automatiquement sur la nouvelle page du jeu post synchronisation
+     * plateforme"). That is usually a DIFFERENT local game: the pin changes the rom_id this client
+     * is served for the game (LiteBoxPinResponse.romId), so the platform sync retires the old row
+     * and creates one for the new id — going back to the old Game Detail would show a game that no
+     * longer exists, and its ViewModel would not reload even when the id happened to survive.
+     * Falls back to the current game when the new rom is not found locally (sync failed, offline).
+     * [onSwitched] fires only on success: staying on the picker after a failure is what lets the
+     * user retry or pick something else.
      */
-    private fun confirmFocused(onNavigateBack: () -> Unit) {
+    private fun confirmFocused(onSwitched: (Long) -> Unit) {
         val state = _uiState.value
         if (state.isApplying) return
         val row = state.rows.getOrNull(state.focusIndex) ?: return
@@ -127,17 +140,18 @@ class VersionPickerViewModel @Inject constructor(
         val id = rommId ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isApplying = true) }
-            val result = romMRepository.liteBoxPinVersion(id, row.appId, row.path)
-            when (result) {
+            when (val result = romMRepository.liteBoxPinVersion(id, row.appId, row.path)) {
                 is RomMResult.Success -> {
-                    // Best-effort: a game still shows correctly off the pin alone even if the
-                    // platform re-sync that follows fails or the connection drops mid-way.
+                    // Best-effort: the pin already holds server-side even if the re-sync that
+                    // follows fails or the connection drops mid-way.
                     if (platformId >= 0) {
                         runCatching { romMRepository.syncPlatform(platformId) }
                             .onFailure { Logger.warn(TAG, "post-pin platform sync failed: ${it.message}") }
                     }
+                    val newRomId = result.data.romId
+                    val target = if (newRomId > 0) gameDao.getByRommId(newRomId)?.id else null
                     _uiState.update { it.copy(isApplying = false) }
-                    onNavigateBack()
+                    onSwitched(target ?: gameId)
                 }
                 is RomMResult.Error -> {
                     Logger.warn(TAG, "pin failed: ${result.message}")
@@ -147,7 +161,9 @@ class VersionPickerViewModel @Inject constructor(
         }
     }
 
-    fun createInputHandler(onBack: () -> Unit): InputHandler = object : InputHandler {
+    /** B backs out of a drilled-in version first; at the top level it leaves the screen through
+     * [onBack] explicitly — never relying on an UNHANDLED result reaching some other handler. */
+    fun createInputHandler(onBack: () -> Unit, onSwitched: (Long) -> Unit): InputHandler = object : InputHandler {
         override fun onUp(): InputResult =
             if (moveFocus(-1)) InputResult.HANDLED else InputResult.handled(SoundType.BOUNDARY)
 
@@ -155,11 +171,13 @@ class VersionPickerViewModel @Inject constructor(
             if (moveFocus(1)) InputResult.HANDLED else InputResult.handled(SoundType.BOUNDARY)
 
         override fun onConfirm(): InputResult {
-            confirmFocused(onNavigateBack = onBack)
+            confirmFocused(onSwitched)
             return InputResult.HANDLED
         }
 
-        override fun onBack(): InputResult =
-            if (backOutOfDrillDown()) InputResult.HANDLED else InputResult.UNHANDLED
+        override fun onBack(): InputResult {
+            if (!backOutOfDrillDown()) onBack()
+            return InputResult.HANDLED
+        }
     }
 }

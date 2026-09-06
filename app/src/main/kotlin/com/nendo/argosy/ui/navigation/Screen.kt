@@ -76,7 +76,12 @@ sealed class Screen(val route: String) {
         const val ROUTE_COLLECTION_DETAIL = "collection"
         const val ROUTE_VIRTUAL_BROWSER = "virtual"
         const val ROUTE_GAME_DETAIL = "game"
-        const val ROUTE_VERSION_PICKER = "game_versions"
+        // The FULL template, not a short key: InputDispatcher.isRouteMatch compares the active
+        // destination's route template by prefix / first segment, and this screen's first segment is
+        // "game" — the same as ROUTE_GAME_DETAIL. A shorter key could never match, so the picker's
+        // handler stayed parked forever while Game Detail's kept receiving every button press
+        // (measured live 2026-09-06: list shown, no gamepad control at all).
+        const val ROUTE_VERSION_PICKER = "game/{gameId}/versions"
         const val ROUTE_SETTINGS = "settings"
         const val ROUTE_DOWNLOADS = "downloads"
         const val ROUTE_SAVE_SYNC = "save_sync"

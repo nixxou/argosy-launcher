@@ -49,6 +49,7 @@ import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.util.clickableNoFocus
 
 /**
  * The full-page version/rom picker (Mehdi, 2026-09-06): "faut une grande page pour choisir la
@@ -60,10 +61,13 @@ import com.nendo.argosy.ui.theme.Dimens
 fun VersionPickerScreen(
     gameId: Long,
     onBack: () -> Unit,
+    onSwitched: (newGameId: Long) -> Unit,
     viewModel: VersionPickerViewModel = hiltViewModel()
 ) {
     val inputDispatcher = LocalInputDispatcher.current
-    val inputHandler = remember(onBack) { viewModel.createInputHandler(onBack = onBack) }
+    val inputHandler = remember(onBack, onSwitched) {
+        viewModel.createInputHandler(onBack = onBack, onSwitched = onSwitched)
+    }
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, inputHandler) {
         val observer = LifecycleEventObserver { _, event ->
@@ -130,7 +134,11 @@ fun VersionPickerScreen(
                     verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
                 ) {
                     itemsIndexed(uiState.rows, key = { index, row -> "$index:${row.appId}:${row.path}" }) { index, row ->
-                        VersionRowCard(row = row, isFocused = index == uiState.focusIndex)
+                        VersionRowCard(
+                            row = row,
+                            isFocused = index == uiState.focusIndex,
+                            onClick = { viewModel.selectRow(index, onSwitched = onSwitched) }
+                        )
                     }
                 }
             }
@@ -167,11 +175,15 @@ fun VersionPickerScreen(
 }
 
 @Composable
-private fun VersionRowCard(row: VersionPickerRow, isFocused: Boolean) {
+private fun VersionRowCard(row: VersionPickerRow, isFocused: Boolean, onClick: () -> Unit) {
     val borderColor = if (isFocused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+    // clickableNoFocus, like every row in the app: a tap acts, but never steals Compose focus from
+    // the index-based highlight the gamepad drives (measured 2026-09-06: without any click handler
+    // at all, a tap did nothing).
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .clickableNoFocus(onClick = onClick)
             .border(width = 2.dp, color = borderColor, shape = RoundedCornerShape(Dimens.radiusLg)),
         shape = RoundedCornerShape(Dimens.radiusLg),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -189,13 +201,23 @@ private fun VersionRowCard(row: VersionPickerRow, isFocused: Boolean) {
                 )
                 Spacer(modifier = Modifier.width(Dimens.spacingSm))
             }
-            Text(
-                text = row.label,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = row.label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                row.subtitle?.let { sub ->
+                    Text(
+                        text = sub,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
             if (row.isDrillable) {
                 Icon(
                     imageVector = Icons.Default.ChevronRight,

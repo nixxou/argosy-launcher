@@ -43,8 +43,6 @@ import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import com.nendo.argosy.util.formatBytes
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -88,9 +86,6 @@ sealed class MenuItem(
     data object Play : MenuItem("play")
     data object Saves : MenuItem("saves", visibleWhen = { it.hasSaveSync })
     data object Favorite : MenuItem("favorite")
-    // LiteBox-only (RommLiteBoxApi.cs): a real RomM server never reports this, so it stays hidden
-    // for every official client — see the "sans casser la compatibilité" constraint in the plan.
-    data object VersionSwitch : MenuItem("version_switch", visibleWhen = { it.hasLiteBoxVersions })
     data object Privacy : MenuItem("privacy", visibleWhen = { it.hasSocialAccount })
     data object PerGameSettings : MenuItem("per_game_settings", visibleWhen = { it.hasPerGameSettings })
     data object Options : MenuItem("options")
@@ -100,10 +95,14 @@ sealed class MenuItem(
     data object Reviews : MenuItem("reviews", visibleWhen = { it.hasSocialAccount })
     data object Achievements : MenuItem("achievements", visibleWhen = { it.hasAchievements })
     data object RelatedGames : MenuItem("related", visibleWhen = { it.hasRelated })
+    // LiteBox-only (RommLiteBoxApi.cs): a real RomM server never reports this, so it stays hidden
+    // for every official client. Last on purpose — Mehdi (2026-09-06): "une option sur le menu en
+    // dessous de ceux existants", below Related games, not wedged among the top actions.
+    data object VersionSwitch : MenuItem("version_switch", visibleWhen = { it.hasLiteBoxVersions })
 
     companion object {
         val ALL: List<MenuItem>
-            get() = listOf(Play, Saves, Favorite, VersionSwitch, Privacy, PerGameSettings, Options, Details, Description, Screenshots, Reviews, Achievements, RelatedGames)
+            get() = listOf(Play, Saves, Favorite, Privacy, PerGameSettings, Options, Details, Description, Screenshots, Reviews, Achievements, RelatedGames, VersionSwitch)
     }
 }
 
@@ -633,23 +632,28 @@ private fun VersionSwitchMenuItem(
     }
     val label = stringResource(R.string.gamedetail_menu_version_switch)
 
+    // The count is plain text next to (or under) the icon, never a Badge bubble over it — the bubble
+    // overlapped the icon in the narrow icon-only menu (Mehdi, 2026-09-06: "badge dégueux").
     MenuItemWithLeftBorder(
         isFocused = isFocused,
         isCompact = isCompact,
         onClick = onClick
     ) {
         if (isCompact) {
-            BadgedBox(badge = {
-                if (versionCount > 0) {
-                    Badge { Text(versionCount.toString()) }
-                }
-            }) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(
                     imageVector = Icons.Default.Layers,
                     contentDescription = stringResource(R.string.gamedetail_menu_version_switch_description, versionCount),
                     tint = iconTint,
                     modifier = Modifier.size(Dimens.iconSm)
                 )
+                if (versionCount > 0) {
+                    Text(
+                        text = versionCount.toString(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = textColor
+                    )
+                }
             }
         } else {
             Row(
@@ -663,7 +667,12 @@ private fun VersionSwitchMenuItem(
                     modifier = Modifier.weight(1f)
                 )
                 if (versionCount > 0) {
-                    Badge(modifier = Modifier.padding(end = Dimens.spacingSm)) { Text(versionCount.toString()) }
+                    Text(
+                        text = versionCount.toString(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = textColor.copy(alpha = 0.7f)
+                    )
+                    Spacer(modifier = Modifier.width(Dimens.spacingSm))
                 }
                 Icon(
                     imageVector = Icons.Default.Layers,

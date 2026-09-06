@@ -514,4 +514,8 @@
     <string name="reviews_editor_footer_submit">पोस्ट करें</string>
     <string name="reviews_editor_footer_delete">हटाएं</string>
     <string name="reviews_editor_footer_back">वापस</string>
+
+    <string name="gamedetail_menu_version_switch">संस्करण</string>
+    <string name="gamedetail_menu_version_switch_description">%1$d संस्करण उपलब्ध</string>
+    <string name="gamedetail_footer_version_switch">संस्करण बदलें</string>
 </resources>
