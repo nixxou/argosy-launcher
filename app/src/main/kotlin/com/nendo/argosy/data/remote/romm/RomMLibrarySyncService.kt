@@ -490,7 +490,8 @@ class RomMLibrarySyncService @Inject constructor(
             }
 
             if (hasLocalContent(game)) {
-                preserveOrphanedGame(game, ownerUserId)
+                val live = supersedingLiveSibling(game, serverRomIds)
+                if (live != null) markSuperseded(game, live) else preserveOrphanedGame(game, ownerUserId)
                 continue
             }
             if (!romVolumesReadable) {
@@ -577,7 +578,8 @@ class RomMLibrarySyncService @Inject constructor(
             val game = gameDao.getById(ref.id) ?: continue
 
             if (hasLocalContent(game)) {
-                preserveOrphanedGame(game, scope.ownerUserId)
+                val live = supersedingLiveSibling(game, serverRomIds.toSet())
+                if (live != null) markSuperseded(game, live) else preserveOrphanedGame(game, scope.ownerUserId)
                 preserved++
                 continue
             }
@@ -833,6 +835,7 @@ class RomMLibrarySyncService @Inject constructor(
             packageName = installedPackageName,
             rommId = rom.id,
             rommFileName = rom.fileName,
+            liteboxGameId = rom.liteboxGameId,
             igdbId = rom.igdbId,
             raId = rom.raId,
             titleId = existing?.titleId,
@@ -1461,6 +1464,33 @@ class RomMLibrarySyncService @Inject constructor(
             gameDiscDao.getDiscsForGame(game.id).any { it.localPath != null } ||
             saveCacheDao.countByGameAllOwners(game.id) > 0 ||
             stateCacheDao.countByGameAllOwners(game.id) > 0
+
+    /**
+     * LiteBox only. An orphan whose liteboxGameId names a game this client IS still served - under
+     * another rommId, i.e. another version the user switched to (RommLiteBoxApi pin) - is not gone,
+     * it is superseded: kept with its OWN rommId (switching back reattaches by id, nothing to
+     * migrate), downloaded file and caches intact, and shown nowhere (GameDao filters on
+     * liteboxSupersededBy) until the server serves it again - a served row is rebuilt from scratch
+     * by syncRom, which resets the mark. Null when no live sibling exists: the caller then falls back
+     * to preserveOrphanedGame, the pre-LiteBox behaviour. Measured 2026-09-06 without this: every
+     * switch left a preserved ghost (negative rommId) and switching back created a THIRD row.
+     */
+    private suspend fun supersedingLiveSibling(game: GameEntity, serverRomIds: Set<Long>?): GameEntity? {
+        val key = game.liteboxGameId ?: return null
+        return gameDao.getByLiteboxGameId(game.platformId, key).firstOrNull { sibling ->
+            sibling.id != game.id && sibling.rommId != null && sibling.rommId > 0 &&
+                !sibling.syncDirty && (serverRomIds == null || sibling.rommId in serverRomIds)
+        }
+    }
+
+    private suspend fun markSuperseded(game: GameEntity, live: GameEntity) {
+        gameDao.insert(game.copy(liteboxSupersededBy = live.rommId, syncDirty = false))
+        Logger.info(
+            TAG,
+            "reconcileOrphans: ${game.title} (rommId ${game.rommId}) is another version of a served game, " +
+                "superseded by rommId ${live.rommId}; kept, not shown"
+        )
+    }
 
     /**
      * Keeps a game whose rom left the server, under a synthetic id so nothing downstream

@@ -46,6 +46,14 @@ data class GameEntity(
     val localPath: String?,
     val rommId: Long?,
     val rommFileName: String? = null,
+    // LiteBox only: the LaunchBox game GUID shared by every version/rom row of one game (the
+    // server sends it to a client carrying X-LiteBox-Client). What tells "another version of this
+    // game" from "another game" when a switch changes the rommId this client is served.
+    val liteboxGameId: String? = null,
+    // LiteBox only: set when ANOTHER local row of the same liteboxGameId is the version this client is
+    // currently served (its rommId) - this row is a version the user switched away from, kept for
+    // its downloaded file and caches but shown nowhere. Cleared the moment the server serves it again.
+    val liteboxSupersededBy: Long? = null,
     val igdbId: Long?,
     val raId: Long? = null,
     val steamAppId: Long? = null,

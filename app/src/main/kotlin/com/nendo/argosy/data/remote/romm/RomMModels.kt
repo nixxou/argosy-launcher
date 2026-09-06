@@ -47,6 +47,9 @@ data class RomMRom(
     @Json(name = "sgdb_id") val sgdbId: Long? = null,
     @Json(name = "ss_id") val ssId: Long? = null,
     @Json(name = "launchbox_id") val launchboxId: Long? = null,
+    // LiteBox only (sent back to a client carrying X-LiteBox-Client, see RomMApiFactory): the
+    // LaunchBox game GUID shared by every version/rom row of one game. Null from a stock RomM.
+    @Json(name = "litebox_game_id") val liteboxGameId: String? = null,
     @Json(name = "hasheous_id") val hasheousId: Long? = null,
     @Json(name = "tgdb_id") val tgdbId: Long? = null,
     @Json(name = "hltb_id") val hltbId: Long? = null,
