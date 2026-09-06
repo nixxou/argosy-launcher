@@ -56,6 +56,9 @@ class SettingsBackupKeysTest {
 
     private val saveAndStateSafetyGates = setOf(
         "save_sync_enabled", "save_watcher_enabled", "state_cache_enabled", "secure_saves",
+        // 8ebbf180: the stale-resume guard is a safety switch like secure_saves - a restored backup
+        // must never silently turn it off on a device that had it on.
+        "protect_against_stale_resume",
         "weekly_integrity_check_enabled", "sync_filter_delete_orphans"
     )
 

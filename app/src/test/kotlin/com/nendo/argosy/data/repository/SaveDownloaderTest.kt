@@ -46,7 +46,8 @@ class SaveDownloaderTest {
         gciSaveHandler = mockk(relaxed = true),
         apiClient = dagger.Lazy { mockApiClient },
         saveUploader = dagger.Lazy { mockk(relaxed = true) },
-        emulatorSaveConfigRepository = mockk(relaxed = true)
+        emulatorSaveConfigRepository = mockk(relaxed = true),
+        stateCacheManager = dagger.Lazy { mockk(relaxed = true) }
     )
 
     @Test
