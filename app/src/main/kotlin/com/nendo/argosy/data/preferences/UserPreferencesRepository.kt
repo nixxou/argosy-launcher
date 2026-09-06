@@ -369,6 +369,7 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setBoxArtCacheEnabled(enabled: Boolean) = syncPrefs.setBoxArtCacheEnabled(enabled)
     suspend fun setSaveSyncEnabled(enabled: Boolean) = syncPrefs.setSaveSyncEnabled(enabled)
     suspend fun setSecureSaves(enabled: Boolean) = syncPrefs.setSecureSaves(enabled)
+    suspend fun setProtectAgainstStaleResume(enabled: Boolean) = syncPrefs.setProtectAgainstStaleResume(enabled)
     suspend fun setStateCacheEnabled(enabled: Boolean) = syncPrefs.setStateCacheEnabled(enabled)
     suspend fun setSaveCacheLimit(limit: Int) = syncPrefs.setSaveCacheLimit(limit)
     suspend fun setSaveDebugLoggingEnabled(enabled: Boolean) = syncPrefs.setSaveDebugLoggingEnabled(enabled)

@@ -59,6 +59,9 @@ internal sealed class SavesItem(
 
     data object SaveSync : SavesItem("saveSync", "policy")
     data object SecureSaves : SavesItem("secureSaves", "policy", visibleWhen = { it.saveSyncEnabled })
+    // The guard from 8ebbf180 (SyncPreferences.protectAgainstStaleResume). Not server-gated: it acts
+    // on the built-in core's own AUTO_SLOT/RESUME_SLOT files, which exist with or without RomM.
+    data object ProtectStaleResume : SavesItem("protectStaleResume", "policy")
     data object SaveCacheLimit : SavesItem("saveCacheLimit", "policy")
     data object ManageSaveSync : SavesItem("manageSaveSync", "manage")
     data object SaveCaches : SavesItem("saveCaches", "manage")
@@ -67,7 +70,7 @@ internal sealed class SavesItem(
         val ALL: List<SavesItem>
             get() = listOf(
                 Header("policyHeader", "policy", R.string.settings_saves_section_sync),
-                SaveSync, SecureSaves, SaveCacheLimit,
+                SaveSync, SecureSaves, ProtectStaleResume, SaveCacheLimit,
                 Header("manageHeader", "manage", R.string.settings_saves_section_manage),
                 ManageSaveSync, SaveCaches
             )
@@ -185,6 +188,18 @@ fun SavesSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     onToggle = { viewModel.toggleSecureSaves() }
                 )
             }
+
+            SavesItem.ProtectStaleResume -> SwitchPreference(
+                title = stringResource(R.string.settings_saves_protect_stale_resume_title),
+                subtitle = if (syncSettings.protectAgainstStaleResume) {
+                    stringResource(R.string.settings_saves_protect_stale_resume_subtitle_on)
+                } else {
+                    stringResource(R.string.settings_saves_protect_stale_resume_subtitle_off)
+                },
+                isEnabled = syncSettings.protectAgainstStaleResume,
+                isFocused = isFocused(item),
+                onToggle = { viewModel.toggleProtectAgainstStaleResume() }
+            )
 
             SavesItem.SaveCacheLimit -> {
                 val limits = SyncSettingsDelegate.SAVE_CACHE_LIMIT_VALUES

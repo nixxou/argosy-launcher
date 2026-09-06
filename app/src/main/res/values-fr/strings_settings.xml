@@ -2257,4 +2257,7 @@
     <string name="settings_main_language_subtitle">Changer le texte dans tout le lanceur</string>
     <string name="settings_main_language_system_default">Réglage système</string>
 
+    <string name="settings_saves_protect_stale_resume_title">Protéger contre les états auto obsolètes</string>
+    <string name="settings_saves_protect_stale_resume_subtitle_on">Un état auto/reprise plus ancien que la sauvegarde active est supprimé au lieu d\'être chargé</string>
+    <string name="settings_saves_protect_stale_resume_subtitle_off">Le cœur intégré reprend toujours depuis son dernier état auto/reprise</string>
 </resources>

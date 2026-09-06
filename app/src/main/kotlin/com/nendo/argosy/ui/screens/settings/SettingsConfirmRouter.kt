@@ -433,6 +433,10 @@ private fun routeSavesConfirm(vm: SettingsViewModel, state: SettingsUiState): In
             vm.toggleSecureSaves()
             return InputResult.handled(SoundType.TOGGLE)
         }
+        SavesItem.ProtectStaleResume -> {
+            vm.toggleProtectAgainstStaleResume()
+            return InputResult.handled(SoundType.TOGGLE)
+        }
         SavesItem.SaveCacheLimit -> {
             vm.requestEnumPicker(SavesItem.SaveCacheLimit.key)
             return InputResult.handled(SoundType.OPEN_MODAL)

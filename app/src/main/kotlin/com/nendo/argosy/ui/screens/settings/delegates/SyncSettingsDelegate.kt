@@ -102,6 +102,7 @@ class SyncSettingsDelegate @Inject constructor(
                     syncFilters = prefs.syncFilters,
                     saveSyncEnabled = prefs.saveSyncEnabled,
                     secureSaves = prefs.secureSaves,
+                    protectAgainstStaleResume = prefs.protectAgainstStaleResume,
                     stateCacheEnabled = prefs.stateCacheEnabled,
                     saveCacheLimit = prefs.saveCacheLimit,
                     hasStoragePermission = hasStoragePermission,
@@ -439,6 +440,16 @@ class SyncSettingsDelegate @Inject constructor(
             preferencesRepository.setSaveSyncEnabled(true)
             _state.update { it.copy(saveSyncEnabled = true) }
             runSaveSyncNow(scope)
+        }
+    }
+
+    /** The stale-resume guard from 8ebbf180 (built-in core only): plain on/off, no permission or
+     * confirmation dance — turning it off just lets AUTO_SLOT/RESUME_SLOT load as before. */
+    fun toggleProtectAgainstStaleResume(scope: CoroutineScope) {
+        scope.launch {
+            val newValue = !_state.value.protectAgainstStaleResume
+            preferencesRepository.setProtectAgainstStaleResume(newValue)
+            _state.update { it.copy(protectAgainstStaleResume = newValue) }
         }
     }
 

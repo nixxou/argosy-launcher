@@ -2205,4 +2205,7 @@
     <string name="settings_main_language_subtitle">पूरे लॉन्चर में टेक्स्ट बदलें</string>
     <string name="settings_main_language_system_default">सिस्टम डिफ़ॉल्ट</string>
 
+    <string name="settings_saves_protect_stale_resume_title">पुरानी ऑटो-स्टेट से सुरक्षा</string>
+    <string name="settings_saves_protect_stale_resume_subtitle_on">सक्रिय सेव से पुरानी ऑटो/रिज़्यूम स्टेट लोड होने के बजाय हटा दी जाती है</string>
+    <string name="settings_saves_protect_stale_resume_subtitle_off">बिल्ट-इन कोर हमेशा अपनी आखिरी ऑटो/रिज़्यूम स्टेट से फिर शुरू करता है</string>
 </resources>

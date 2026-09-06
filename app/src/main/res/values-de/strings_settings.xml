@@ -2214,5 +2214,8 @@
     <string name="settings_main_language_title">Sprache</string>
     <string name="settings_main_language_subtitle">Ändert den Text im gesamten Launcher</string>
     <string name="settings_main_language_system_default">Systemstandard</string>
-</resources>
 
+    <string name="settings_saves_protect_stale_resume_title">Vor veralteten Auto-Zuständen schützen</string>
+    <string name="settings_saves_protect_stale_resume_subtitle_on">Ein Auto-/Fortsetzungszustand, der älter als der aktive Spielstand ist, wird verworfen statt geladen</string>
+    <string name="settings_saves_protect_stale_resume_subtitle_off">Der integrierte Kern setzt immer beim letzten Auto-/Fortsetzungszustand fort</string>
+</resources>
