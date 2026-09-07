@@ -155,4 +155,31 @@ class LiteBoxService @Inject constructor(
             LiteBoxRaPoll.Failed(e.message ?: "Connection failed")
         }
     }
+
+    fun supportsProgress(): Boolean {
+        val client = api ?: return false
+        val c = cached ?: return false
+        return c.first === client && c.second.features.contains("litebox-progress")
+    }
+
+    @Volatile
+    private var progressCache: Pair<RomMApi, List<LiteBoxProgressValue>>? = null
+
+    /** The library's own Progress list, fetched once per connection (it changes when the user edits
+     * LaunchBox's ProgressPriorities, which is rare - a re-pair or restart picks that up). Empty when
+     * the server does not have the feature, or on failure - the caller then shows RomM's own list. */
+    suspend fun progressValues(): List<LiteBoxProgressValue> {
+        val client = api ?: return emptyList()
+        progressCache?.let { if (it.first === client) return it.second }
+        if (!supportsProgress()) return emptyList()
+        return try {
+            val response = client.getLiteBoxProgressValues()
+            val values = if (response.isSuccessful) response.body().orEmpty() else emptyList()
+            if (values.isNotEmpty()) progressCache = client to values
+            values
+        } catch (e: Exception) {
+            Logger.debug(TAG, "progress values fetch failed: ${e.message}")
+            emptyList()
+        }
+    }
 }

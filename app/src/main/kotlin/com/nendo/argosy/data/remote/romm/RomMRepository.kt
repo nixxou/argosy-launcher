@@ -146,8 +146,9 @@ class RomMRepository @Inject constructor(
         userRating: Int? = null,
         userDifficulty: Int? = null,
         userStatus: String? = null,
-        hidden: Boolean? = null
-    ): Boolean = apiClient.updateRomUserProps(rommId, userRating, userDifficulty, userStatus, hidden)
+        hidden: Boolean? = null,
+        liteboxProgress: String? = null
+    ): Boolean = apiClient.updateRomUserProps(rommId, userRating, userDifficulty, userStatus, hidden, liteboxProgress)
 
     // --- Library Sync ---
 
@@ -261,4 +262,13 @@ class RomMRepository @Inject constructor(
 
     suspend fun liteBoxPollRaCredentials(requestId: String): LiteBoxRaPoll =
         liteBoxService.pollRaCredentials(requestId)
+
+    /** LiteBox's own Progress vocabulary; empty on a stock RomM, so the caller falls back to RomM's statuses. */
+    suspend fun liteBoxProgressValues(): List<LiteBoxProgressValue> {
+        liteBoxService.capabilities()
+        return liteBoxService.progressValues()
+    }
+
+    suspend fun updateLiteBoxProgress(gameId: Long, value: String): RomMResult<Unit> =
+        userPropertyService.updateLiteBoxProgress(gameId, value)
 }

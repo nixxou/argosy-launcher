@@ -297,9 +297,13 @@ fun PlayTimeChip(minutes: Int) {
     }
 }
 
+/** [liteBoxProgress], when set, is LaunchBox's own Progress entry ("Done / Beaten") and its value half is
+ * what the chip says - the RomM status behind it only lends the icon and colour. */
 @Composable
-fun StatusChip(statusValue: String?) {
-    val status = CompletionStatus.fromApiValue(statusValue) ?: return
+fun StatusChip(statusValue: String?, liteBoxProgress: String? = null) {
+    val status = CompletionStatus.fromApiValue(statusValue)
+    val progressLabel = liteBoxProgress?.takeIf { it.isNotBlank() }?.substringAfter(" / ")
+    if (status == null && progressLabel == null) return
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -314,14 +318,16 @@ fun StatusChip(statusValue: String?) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
         ) {
-            Icon(
-                imageVector = status.icon,
-                contentDescription = null,
-                tint = status.color,
-                modifier = Modifier.size(Dimens.iconXs)
-            )
+            if (status != null) {
+                Icon(
+                    imageVector = status.icon,
+                    contentDescription = null,
+                    tint = status.color,
+                    modifier = Modifier.size(Dimens.iconXs)
+                )
+            }
             Text(
-                text = stringResource(status.labelRes),
+                text = progressLabel ?: stringResource(status!!.labelRes),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface
             )

@@ -2,6 +2,7 @@ package com.nendo.argosy.ui.screens.gamedetail.delegates
 
 import android.content.Context
 import com.nendo.argosy.R
+import com.nendo.argosy.data.remote.romm.LiteBoxProgressValue
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.ui.input.SoundFeedbackManager
 import com.nendo.argosy.core.input.SoundType
@@ -25,6 +26,7 @@ data class RatingsStatusState(
     val ratingPickerValue: Int = 0,
     val showStatusPicker: Boolean = false,
     val statusPickerValue: String? = null,
+    val liteBoxProgressValues: List<LiteBoxProgressValue> = emptyList(),
     val showRatingsStatusMenu: Boolean = false,
     val ratingsStatusFocusIndex: Int = 0
 )
@@ -133,12 +135,20 @@ class RatingsStatusDelegate @Inject constructor(
         }
     }
 
-    fun showStatusPicker(currentStatus: String?) {
+    /** On a LiteBox server [liteBoxValues] is the library's own Progress list and the picker works on
+     * [liteBoxProgress] (a full "Category / Value" entry); empty, it is RomM's five statuses as before. */
+    fun showStatusPicker(
+        currentStatus: String?,
+        liteBoxProgress: String? = null,
+        liteBoxValues: List<LiteBoxProgressValue> = emptyList()
+    ) {
         _state.update {
             it.copy(
                 showRatingsStatusMenu = false,
                 showStatusPicker = true,
-                statusPickerValue = currentStatus
+                liteBoxProgressValues = liteBoxValues,
+                statusPickerValue = if (liteBoxValues.isEmpty()) currentStatus
+                    else liteBoxProgress?.takeIf { p -> liteBoxValues.any { v -> v.value == p } } ?: liteBoxValues.first().value
             )
         }
         soundManager.play(SoundType.OPEN_MODAL)
@@ -151,6 +161,11 @@ class RatingsStatusDelegate @Inject constructor(
 
     fun changeStatusValue(delta: Int) {
         _state.update { state ->
+            val values = state.liteBoxProgressValues
+            if (values.isNotEmpty()) {
+                val i = values.indexOfFirst { it.value == state.statusPickerValue }.coerceAtLeast(0)
+                return@update state.copy(statusPickerValue = values[(i + delta).mod(values.size)].value)
+            }
             val newValue = if (delta > 0) {
                 com.nendo.argosy.domain.model.CompletionStatus.cycleNext(state.statusPickerValue)
             } else {
@@ -166,9 +181,11 @@ class RatingsStatusDelegate @Inject constructor(
 
     fun confirmStatus(scope: CoroutineScope, gameId: Long, onSuccess: () -> Unit) {
         val value = _state.value.statusPickerValue
+        val liteBox = _state.value.liteBoxProgressValues.isNotEmpty()
 
         scope.launch {
-            val result = romMRepository.updateUserStatus(gameId, value)
+            val result = if (liteBox && value != null) romMRepository.updateLiteBoxProgress(gameId, value)
+                else romMRepository.updateUserStatus(gameId, value)
 
             when (result) {
                 is com.nendo.argosy.data.remote.romm.RomMResult.Success -> {

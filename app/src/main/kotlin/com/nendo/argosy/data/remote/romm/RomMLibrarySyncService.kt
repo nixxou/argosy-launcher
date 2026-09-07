@@ -852,6 +852,7 @@ class RomMLibrarySyncService @Inject constructor(
             rommId = rom.id,
             rommFileName = rom.fileName,
             liteboxGameId = rom.liteboxGameId,
+            liteboxProgress = rom.liteboxProgress,
             igdbId = rom.igdbId,
             raId = rom.raId,
             titleId = existing?.titleId,

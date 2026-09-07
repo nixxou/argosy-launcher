@@ -431,7 +431,7 @@ private fun PlayStatsRow(
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
         ) {
             game.status?.let { status ->
-                StatusChip(statusValue = status)
+                StatusChip(statusValue = status, liteBoxProgress = game.liteboxProgress)
             }
             if (game.playTimeMinutes > 0) {
                 PlayTimeChip(minutes = game.playTimeMinutes)
@@ -451,7 +451,7 @@ private fun PlayStatsColumn(
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
         ) {
             game.status?.let { status ->
-                StatusChip(statusValue = status)
+                StatusChip(statusValue = status, liteBoxProgress = game.liteboxProgress)
             }
             if (game.playTimeMinutes > 0) {
                 PlayTimeChip(minutes = game.playTimeMinutes)

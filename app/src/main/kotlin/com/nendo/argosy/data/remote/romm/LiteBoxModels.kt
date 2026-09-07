@@ -102,3 +102,12 @@ sealed class LiteBoxRaPoll {
     data class Ready(val credentials: LiteBoxRaCredentials) : LiteBoxRaPoll()
     data class Failed(val message: String) : LiteBoxRaPoll()
 }
+
+/** One entry of the LiteBox library's own Progress vocabulary (LaunchBox ProgressPriorities):
+ * [value] is the full "Category / Value" to send back, the halves are for display. */
+@JsonClass(generateAdapter = true)
+data class LiteBoxProgressValue(
+    val value: String = "",
+    val category: String = "",
+    val label: String = ""
+)

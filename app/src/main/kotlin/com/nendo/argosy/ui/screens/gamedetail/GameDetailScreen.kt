@@ -1301,7 +1301,8 @@ private fun GameDetailModals(
     ) {
         StatusPickerModal(
             selectedValue = uiState.statusPickerValue,
-            currentValue = uiState.game?.status,
+            currentValue = if (uiState.liteBoxProgressValues.isEmpty()) uiState.game?.status else uiState.game?.liteboxProgress,
+            liteBoxValues = uiState.liteBoxProgressValues,
             onSelect = viewModel::selectStatus,
             onDismiss = viewModel::dismissStatusPicker
         )

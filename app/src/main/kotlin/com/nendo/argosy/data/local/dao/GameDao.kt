@@ -433,6 +433,9 @@ interface GameDao {
     @Query("SELECT * FROM games WHERE steamAppId IS NOT NULL")
     suspend fun getAllWithSteamAppId(): List<GameEntity>
 
+    @Query("UPDATE games SET liteboxProgress = :value WHERE id = :gameId")
+    suspend fun setLiteboxProgress(gameId: Long, value: String?)
+
     @Query("UPDATE games SET igdbId = :igdbId WHERE id = :gameId")
     suspend fun updateIgdbId(gameId: Long, igdbId: Long)
 

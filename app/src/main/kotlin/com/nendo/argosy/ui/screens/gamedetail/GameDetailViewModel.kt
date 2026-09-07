@@ -299,6 +299,7 @@ class GameDetailViewModel @Inject constructor(
                         ratingPickerValue = rsState.ratingPickerValue,
                         showStatusPicker = rsState.showStatusPicker,
                         statusPickerValue = rsState.statusPickerValue,
+                        liteBoxProgressValues = rsState.liteBoxProgressValues,
                         showRatingsStatusMenu = rsState.showRatingsStatusMenu,
                         ratingsStatusFocusIndex = rsState.ratingsStatusFocusIndex
                     )
@@ -1276,7 +1277,14 @@ class GameDetailViewModel @Inject constructor(
 
     fun showStatusPicker() {
         val game = _uiState.value.game ?: return
-        ratingsStatus.showStatusPicker(game.status)
+        viewModelScope.launch {
+            // LiteBox: the library's own Progress list replaces RomM's five statuses. Empty on a stock
+            // server or offline (one cached probe, so this is instant after the first time).
+            val values = if (game.isRommGame && com.nendo.argosy.util.NetworkUtils.isOnline(context)) {
+                romMRepository.liteBoxProgressValues()
+            } else emptyList()
+            ratingsStatus.showStatusPicker(game.status, game.liteboxProgress, values)
+        }
     }
 
     fun dismissStatusPicker() = ratingsStatus.dismissStatusPicker()

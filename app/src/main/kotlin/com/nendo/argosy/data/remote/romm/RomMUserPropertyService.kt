@@ -56,6 +56,20 @@ class RomMUserPropertyService @Inject constructor(
     }
 
     /**
+     * LiteBox only (Mehdi, 2026-09-07): one entry of the library's own Progress list, stored on the row at
+     * once and queued to the server verbatim as litebox_progress. The RomM status the server derives
+     * from it comes back on the next refreshUserProps - until then the chip shows the Progress text,
+     * which is what the user chose anyway.
+     */
+    suspend fun updateLiteBoxProgress(gameId: Long, value: String): RomMResult<Unit> {
+        val game = gameDao.getById(gameId) ?: return RomMResult.Error("Game not found")
+        gameDao.setLiteboxProgress(gameId, value)
+        val rommId = game.rommId ?: return RomMResult.Success(Unit)
+        syncCoordinator.get().queuePropertyChange(gameId, rommId, SyncType.LITEBOX_PROGRESS, stringValue = value)
+        return RomMResult.Success(Unit)
+    }
+
+    /**
      * The user's own hide choice: recorded locally first so the library reacts immediately, then
      * queued onto the rom's `rom_user` block. A rom with no server id stops at the local write.
      */
@@ -96,6 +110,11 @@ class RomMUserPropertyService @Inject constructor(
             if (!hasRating) overlayWriter.updateUserRating(gameId, romUser.rating)
             if (!hasDifficulty) overlayWriter.updateUserDifficulty(gameId, romUser.difficulty)
             if (!hasStatus) overlayWriter.updateStatus(gameId, romUser.status)
+            // LiteBox only: the library's own Progress rides on the rom; kept unless a change of ours is still queued.
+            val hasProgress = pendingSyncQueueDao.hasPending(gameId, SyncType.LITEBOX_PROGRESS)
+            if (!hasProgress && current.liteboxProgress != rom.liteboxProgress) {
+                gameDao.setLiteboxProgress(gameId, rom.liteboxProgress)
+            }
             if (!hasHidden) overlayWriter.setHidden(gameId, romUser.hidden)
             if (current.backlogged != romUser.backlogged) {
                 overlayWriter.updateBacklogged(gameId, romUser.backlogged)
