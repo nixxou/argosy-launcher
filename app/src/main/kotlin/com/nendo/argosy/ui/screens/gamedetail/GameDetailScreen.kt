@@ -1,5 +1,7 @@
 package com.nendo.argosy.ui.screens.gamedetail
 
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material3.Text
 import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
@@ -730,6 +732,20 @@ private fun GameDetailContent(
                                     .padding(start = Dimens.spacingMd, top = Dimens.spacingXl, end = Dimens.spacingXl, bottom = Dimens.spacingXl)
                             ) {
                                 ExpandedHeader(game = game)
+
+                                // The ROM's file name, under the cover and above the description
+                                // (Mehdi, 2026-09-06) - the one thing that tells two versions of a
+                                // game apart at a glance once a LiteBox switch is possible.
+                                game.fileName?.let { fileName ->
+                                    Spacer(modifier = Modifier.height(Dimens.spacingSm))
+                                    Text(
+                                        text = fileName,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
 
                                 Spacer(modifier = Modifier.height(Dimens.spacingXl))
 
