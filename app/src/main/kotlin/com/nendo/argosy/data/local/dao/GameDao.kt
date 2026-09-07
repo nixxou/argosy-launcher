@@ -19,6 +19,9 @@ data class PlatformGameCount(
 )
 
 /**
+ * A LiteBox version the user switched away from (`liteboxSupersededBy` set, see
+ * RomMLibrarySyncService.reconcileOrphans) is filtered out by the same predicates - it is not
+ * hidden BY the user (that state syncs to the server), just not the version served right now.
  * Hiding is per account and lives in `user_roms_hidden`, so every list, count and filter here
  * carries the owner it is being run for and tests row existence rather than a column.
  *
@@ -32,7 +35,7 @@ interface GameDao {
     @Query("""
         SELECT * FROM games
         WHERE platformId = :platformId
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         ORDER BY sortTitle ASC
     """)
     fun observeByPlatform(platformId: Long, ownerUserId: Long?): Flow<List<GameEntity>>
@@ -40,7 +43,7 @@ interface GameDao {
     @Query("""
         SELECT * FROM games
         WHERE platformId = :platformId
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         ORDER BY
             CASE
                 WHEN localPath IS NOT NULL AND isFavorite = 1 THEN 0
@@ -60,7 +63,7 @@ interface GameDao {
     @Query("""
         SELECT * FROM games
         WHERE platformId = :platformId
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         ORDER BY
             CASE
                 WHEN localPath IS NOT NULL AND isFavorite = 1 THEN 0
@@ -79,21 +82,21 @@ interface GameDao {
 
     @Query("""
         SELECT * FROM games
-        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         ORDER BY sortTitle ASC
     """)
     fun observeAll(ownerUserId: Long?): Flow<List<GameEntity>>
 
     @Query("""
         SELECT * FROM games
-        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         ORDER BY sortTitle ASC
     """)
     suspend fun getAllSortedByTitle(ownerUserId: Long?): List<GameEntity>
 
     @Query("""
         SELECT id FROM games
-        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         ORDER BY sortTitle ASC
     """)
     suspend fun getAllSortedByTitleIds(ownerUserId: Long?): List<Long>
@@ -115,7 +118,7 @@ interface GameDao {
     @Query("""
         SELECT * FROM games
         WHERE source = :source
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         ORDER BY sortTitle ASC
     """)
     fun observeBySource(source: GameSource, ownerUserId: Long?): Flow<List<GameEntity>>
@@ -123,7 +126,7 @@ interface GameDao {
     @Query("""
         SELECT * FROM games
         WHERE isFavorite = 1
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         ORDER BY (source = 'ROMM_REMOTE') ASC, sortTitle ASC
     """)
     fun observeFavorites(ownerUserId: Long?): Flow<List<GameEntity>>
@@ -134,7 +137,7 @@ interface GameDao {
                isMultiDisc, rommId, steamAppId, packageName, steamLauncher, playCount, playTimeMinutes,
                lastPlayed, genre, gameModes, rating, userRating, userDifficulty, releaseYear, addedAt
         FROM games
-        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         ORDER BY sortTitle ASC
     """)
     fun observeAllList(ownerUserId: Long?): Flow<List<GameListItem>>
@@ -146,7 +149,7 @@ interface GameDao {
                lastPlayed, genre, gameModes, rating, userRating, userDifficulty, releaseYear, addedAt
         FROM games
         WHERE platformId = :platformId
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         ORDER BY sortTitle ASC
     """)
     fun observeByPlatformList(platformId: Long, ownerUserId: Long?): Flow<List<GameListItem>>
@@ -158,7 +161,7 @@ interface GameDao {
                lastPlayed, genre, gameModes, rating, userRating, userDifficulty, releaseYear, addedAt
         FROM games
         WHERE source = :source
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         ORDER BY sortTitle ASC
     """)
     fun observeBySourceList(source: GameSource, ownerUserId: Long?): Flow<List<GameListItem>>
@@ -169,7 +172,7 @@ interface GameDao {
                isMultiDisc, rommId, steamAppId, packageName, steamLauncher, playCount, playTimeMinutes,
                lastPlayed, genre, gameModes, rating, userRating, userDifficulty, releaseYear, addedAt
         FROM games
-        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         AND (source = 'LOCAL_ONLY' OR source = 'ROMM_SYNCED' OR source = 'STEAM' OR source = 'ANDROID_APP')
         AND (source != 'STEAM' OR localPath IS NOT NULL OR (steamLauncher IS NOT NULL AND steamLauncher != 'native'))
         ORDER BY sortTitle ASC
@@ -183,7 +186,7 @@ interface GameDao {
                lastPlayed, genre, gameModes, rating, userRating, userDifficulty, releaseYear, addedAt
         FROM games
         WHERE isFavorite = 1
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         ORDER BY (source = 'ROMM_REMOTE') ASC, sortTitle ASC
     """)
     fun observeFavoritesList(ownerUserId: Long?): Flow<List<GameListItem>>
@@ -206,7 +209,7 @@ interface GameDao {
         FROM games g
         INNER JOIN platforms p ON g.platformId = p.id
         WHERE p.syncEnabled = 1
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = g.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = g.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND g.liteboxSupersededBy IS NULL
         ORDER BY g.sortTitle ASC
     """)
     fun observeSyncEnabledGames(ownerUserId: Long?): Flow<List<GameListItem>>
@@ -216,7 +219,7 @@ interface GameDao {
         FROM games g
         INNER JOIN platforms p ON g.platformId = p.id
         WHERE p.syncEnabled = 1
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = g.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = g.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND g.liteboxSupersededBy IS NULL
         ORDER BY g.sortTitle ASC
     """)
     fun observeSyncEnabledGamesFull(ownerUserId: Long?): Flow<List<GameEntity>>
@@ -226,19 +229,19 @@ interface GameDao {
         FROM games g
         INNER JOIN platforms p ON g.platformId = p.id
         WHERE p.syncEnabled = 1
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = g.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = g.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND g.liteboxSupersededBy IS NULL
     """)
     suspend fun getSyncEnabledGamesForCategories(ownerUserId: Long?): List<GameCategoryInfo>
 
     @Query("""
         SELECT id, genre, gameModes FROM games
-        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
     """)
     fun observeAllCategoryInfo(ownerUserId: Long?): Flow<List<GameCategoryInfo>>
 
     @Query("""
         SELECT id, genre, gameModes FROM games
-        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
     """)
     suspend fun getAllCategoryInfo(ownerUserId: Long?): List<GameCategoryInfo>
 
@@ -247,7 +250,7 @@ interface GameDao {
 
     @Query("""
         SELECT id, platformId, localPath FROM games
-        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
     """)
     suspend fun getAllStorageInfo(ownerUserId: Long?): List<GameStorageInfo>
 
@@ -303,7 +306,7 @@ interface GameDao {
                lastPlayed, genre, gameModes, rating, userRating, userDifficulty, releaseYear, addedAt
         FROM games
         WHERE platformId = :platformId AND isFavorite = 1
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         ORDER BY (source = 'ROMM_REMOTE') ASC, sortTitle ASC
     """)
     fun observeFavoritesByPlatformList(platformId: Long, ownerUserId: Long?): Flow<List<GameListItem>>
@@ -315,7 +318,7 @@ interface GameDao {
                lastPlayed, genre, gameModes, rating, userRating, userDifficulty, releaseYear, addedAt
         FROM games
         WHERE platformId = :platformId
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         AND (source = 'LOCAL_ONLY' OR source = 'ROMM_SYNCED' OR source = 'STEAM' OR source = 'ANDROID_APP')
         AND (source != 'STEAM' OR localPath IS NOT NULL OR (steamLauncher IS NOT NULL AND steamLauncher != 'native'))
         ORDER BY sortTitle ASC
@@ -325,7 +328,7 @@ interface GameDao {
     @Query("""
         SELECT * FROM games
         WHERE isFavorite = 1
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         ORDER BY (source = 'ROMM_REMOTE') ASC, sortTitle ASC
     """)
     suspend fun getFavorites(ownerUserId: Long?): List<GameEntity>
@@ -333,7 +336,7 @@ interface GameDao {
     @Query("""
         SELECT id FROM games
         WHERE isFavorite = 1
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         ORDER BY (source = 'ROMM_REMOTE') ASC, sortTitle ASC
     """)
     suspend fun getFavoriteIds(ownerUserId: Long?): List<Long>
@@ -344,7 +347,7 @@ interface GameDao {
     @Query("""
         SELECT * FROM games
         WHERE lastPlayed IS NOT NULL
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         ORDER BY lastPlayed DESC LIMIT :limit
     """)
     fun observeRecentlyPlayed(ownerUserId: Long?, limit: Int = 20): Flow<List<GameEntity>>
@@ -352,7 +355,7 @@ interface GameDao {
     @Query("""
         SELECT * FROM games
         WHERE lastPlayed IS NOT NULL
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         ORDER BY lastPlayed DESC LIMIT :limit
     """)
     suspend fun getRecentlyPlayed(ownerUserId: Long?, limit: Int = 20): List<GameEntity>
@@ -364,7 +367,7 @@ interface GameDao {
      */
     @Query("""
         SELECT * FROM games
-        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         AND lastPlayed IS NULL
         AND addedAt > :threshold
         AND (:installedOnly = 0
@@ -388,6 +391,26 @@ interface GameDao {
 
     @Query("SELECT * FROM games WHERE rommId = :rommId")
     suspend fun getByRommId(rommId: Long): GameEntity?
+
+    /** Every local row of one LiteBox game on a platform - its versions, served or superseded. */
+    @Query("SELECT * FROM games WHERE platformId = :platformId AND liteboxGameId = :liteboxGameId")
+    suspend fun getByLiteboxGameId(platformId: Long, liteboxGameId: String): List<GameEntity>
+
+    /** Rows preserveOrphanedGame detached (synthetic negative rommId) that no LiteBox pass has claimed yet. */
+    @Query("SELECT * FROM games WHERE platformId = :platformId AND rommId < 0 AND liteboxGameId IS NULL AND liteboxSupersededBy IS NULL")
+    suspend fun getUnclaimedDetachedRows(platformId: Long): List<GameEntity>
+
+    /** Rows this client is currently served on a platform, with their LiteBox game key. */
+    @Query("SELECT * FROM games WHERE platformId = :platformId AND rommId > 0 AND syncDirty = 0 AND liteboxGameId IS NOT NULL")
+    suspend fun getServedKeyedRows(platformId: Long): List<GameEntity>
+
+    /** Other local rows of the same LiteBox game (same key) on a platform. */
+    @Query("SELECT * FROM games WHERE platformId = :platformId AND liteboxGameId = :key AND id != :exceptId")
+    suspend fun getKeyedSiblings(platformId: Long, key: String, exceptId: Long): List<GameEntity>
+
+    /** Rows with no key yet that share the platform and the exact title - versions synced before the key existed. */
+    @Query("SELECT * FROM games WHERE platformId = :platformId AND liteboxGameId IS NULL AND title = :title COLLATE NOCASE AND id != :exceptId")
+    suspend fun getUnkeyedSiblingsByTitle(platformId: Long, title: String, exceptId: Long): List<GameEntity>
 
     @Query("SELECT id, rommId FROM games WHERE rommId IS NOT NULL")
     suspend fun getRommIdMappings(): List<RommIdMapping>
@@ -425,7 +448,7 @@ interface GameDao {
     @Query("""
         SELECT * FROM games
         WHERE searchTitle LIKE '%' || :query || '%'
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         ORDER BY sortTitle ASC
     """)
     fun search(query: String, ownerUserId: Long?): Flow<List<GameEntity>>
@@ -469,7 +492,7 @@ interface GameDao {
     @Query("""
         SELECT * FROM games
         WHERE platformId = :platformId AND localPath IS NOT NULL
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         ORDER BY sortTitle ASC
     """)
     suspend fun getDownloadedGamesByPlatform(platformId: Long, ownerUserId: Long?): List<GameEntity>
@@ -480,7 +503,7 @@ interface GameDao {
     @Query("""
         SELECT COUNT(*) FROM games
         WHERE platformId = :platformId
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
     """)
     suspend fun countByPlatform(platformId: Long, ownerUserId: Long?): Int
 
@@ -491,7 +514,7 @@ interface GameDao {
      */
     @Query("""
         SELECT platformId, COUNT(*) AS gameCount FROM games
-        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         GROUP BY platformId
     """)
     suspend fun countsByPlatform(ownerUserId: Long?): List<PlatformGameCount>
@@ -502,7 +525,7 @@ interface GameDao {
     @Query("""
         SELECT COUNT(*) FROM games
         WHERE platformId = :platformId AND isFavorite = 1
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
     """)
     suspend fun countFavoritesByPlatform(platformId: Long, ownerUserId: Long?): Int
 
@@ -512,7 +535,7 @@ interface GameDao {
     @Query("""
         SELECT * FROM games
         WHERE platformId = :platformId
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         ORDER BY sortTitle ASC
     """)
     suspend fun getByPlatform(platformId: Long, ownerUserId: Long?): List<GameEntity>
@@ -680,7 +703,7 @@ interface GameDao {
     @Query("""
         SELECT id, coverPath FROM games
         WHERE coverPath LIKE '/%' AND gradientColors IS NULL
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         ORDER BY lastPlayed DESC
     """)
     suspend fun getLocalGamesNeedingGradients(ownerUserId: Long?): List<GradientExtractionCandidate>
@@ -723,34 +746,34 @@ interface GameDao {
     @Query("""
         SELECT DISTINCT regions FROM games
         WHERE regions IS NOT NULL
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
     """)
     suspend fun getDistinctRegions(ownerUserId: Long?): List<String>
 
     @Query("""
         SELECT DISTINCT genre FROM games
         WHERE genre IS NOT NULL
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
     """)
     suspend fun getDistinctGenres(ownerUserId: Long?): List<String>
 
     @Query("""
         SELECT DISTINCT franchises FROM games
         WHERE franchises IS NOT NULL
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
     """)
     suspend fun getDistinctFranchises(ownerUserId: Long?): List<String>
 
     @Query("""
         SELECT DISTINCT gameModes FROM games
         WHERE gameModes IS NOT NULL
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
     """)
     suspend fun getDistinctGameModes(ownerUserId: Long?): List<String>
 
     @Query("""
         SELECT * FROM games
-        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         AND regions LIKE '%' || :region || '%'
         ORDER BY sortTitle ASC
     """)
@@ -758,7 +781,7 @@ interface GameDao {
 
     @Query("""
         SELECT * FROM games
-        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         AND genre = :genre
         ORDER BY sortTitle ASC
     """)
@@ -766,7 +789,7 @@ interface GameDao {
 
     @Query("""
         SELECT * FROM games
-        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         AND franchises LIKE '%' || :franchise || '%'
         ORDER BY sortTitle ASC
     """)
@@ -774,7 +797,7 @@ interface GameDao {
 
     @Query("""
         SELECT * FROM games
-        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         AND gameModes LIKE '%' || :gameMode || '%'
         ORDER BY sortTitle ASC
     """)
@@ -786,7 +809,7 @@ interface GameDao {
                isMultiDisc, rommId, steamAppId, packageName, steamLauncher, playCount, playTimeMinutes,
                lastPlayed, genre, gameModes, rating, userRating, userDifficulty, releaseYear, addedAt
         FROM games
-        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         AND id != :excludeGameId
         AND collections LIKE '%' || :token || '%'
         ORDER BY releaseYear ASC
@@ -805,7 +828,7 @@ interface GameDao {
                isMultiDisc, rommId, steamAppId, packageName, steamLauncher, playCount, playTimeMinutes,
                lastPlayed, genre, gameModes, rating, userRating, userDifficulty, releaseYear, addedAt
         FROM games
-        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         AND id != :excludeGameId
         AND franchises LIKE '%' || :token || '%'
         ORDER BY rating DESC
@@ -824,7 +847,7 @@ interface GameDao {
                isMultiDisc, rommId, steamAppId, packageName, steamLauncher, playCount, playTimeMinutes,
                lastPlayed, genre, gameModes, rating, userRating, userDifficulty, releaseYear, addedAt
         FROM games
-        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         AND id != :excludeGameId
         AND releaseYear BETWEEN :yearLo AND :yearHi
         AND (genres LIKE '%' || :token || '%' OR (genres IS NULL AND genre = :token))
@@ -930,7 +953,7 @@ interface GameDao {
     @Query("""
         SELECT * FROM games
         WHERE playCount > 0
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         ORDER BY playTimeMinutes DESC
     """)
     suspend fun getPlayedGames(ownerUserId: Long?): List<GameEntity>
@@ -940,7 +963,7 @@ interface GameDao {
         WHERE (playCount = 0 OR playCount IS NULL)
         AND (completion = 0 OR completion IS NULL)
         AND localPath IS NOT NULL
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
     """)
     suspend fun getUnplayedInstalledGames(ownerUserId: Long?): List<GameEntity>
 
@@ -949,7 +972,7 @@ interface GameDao {
         WHERE (playCount = 0 OR playCount IS NULL)
         AND (completion = 0 OR completion IS NULL)
         AND localPath IS NULL
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
     """)
     suspend fun getUnplayedUndownloadedGames(ownerUserId: Long?): List<GameEntity>
 
@@ -970,7 +993,7 @@ interface GameDao {
 
     @Query("""
         SELECT * FROM games
-        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         AND (status IS NULL OR status NOT IN ('retired', 'never_playing'))
         ORDER BY RANDOM()
         LIMIT 1
@@ -979,7 +1002,7 @@ interface GameDao {
 
     @Query("""
         SELECT id, genres FROM games
-        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         AND (status IS NULL OR status NOT IN ('retired', 'never_playing'))
         AND (:downloadedOnly = 0 OR localPath IS NOT NULL)
         AND (:neverPlayed = 0 OR (playCount = 0 AND lastPlayed IS NULL))
@@ -996,7 +1019,7 @@ interface GameDao {
     @Query("""
         SELECT * FROM games
         WHERE searchTitle LIKE '%' || :query || '%'
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         ORDER BY
             CASE WHEN searchTitle LIKE :query || '%' THEN 0 ELSE 1 END,
             CASE WHEN rating IS NULL THEN 1 ELSE 0 END,
@@ -1014,7 +1037,7 @@ interface GameDao {
     @Query("""
         SELECT * FROM games
         WHERE searchTitle LIKE '%' || :query || '%'
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         AND (
             source = 'ANDROID_APP'
             OR localPath IS NOT NULL
@@ -1055,7 +1078,7 @@ interface GameDao {
 
     @Query("""
         SELECT id, title, rating FROM games
-        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         AND (status IS NULL OR status NOT IN ('retired', 'never_playing'))
     """)
     suspend fun getSearchCandidates(ownerUserId: Long?): List<SearchCandidate>
@@ -1068,7 +1091,7 @@ interface GameDao {
                rating, userRating, userDifficulty, releaseYear, addedAt
         FROM games
         WHERE coverPath LIKE '/%'
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         LIMIT 1
     """)
     suspend fun getFirstGameWithCover(ownerUserId: Long?): GameListItem?
@@ -1081,7 +1104,7 @@ interface GameDao {
                rating, userRating, userDifficulty, releaseYear, addedAt
         FROM games
         WHERE coverPath LIKE '/%' AND lastPlayed IS NOT NULL AND localPath IS NOT NULL
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         ORDER BY lastPlayed DESC
         LIMIT :limit
     """)
@@ -1096,7 +1119,7 @@ interface GameDao {
         FROM games
         WHERE coverPath LIKE '/%' AND lastPlayed IS NOT NULL
               AND localPath IS NOT NULL AND platformSlug IN (:platformSlugs)
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AND games.liteboxSupersededBy IS NULL
         ORDER BY lastPlayed DESC
         LIMIT :limit
     """)

@@ -3546,3 +3546,15 @@ object Migration_182_183 : Migration(182, 183) {
         db.execSQL("ALTER TABLE `home_tiles` ADD COLUMN `featureConfig` TEXT")
     }
 }
+
+/**
+ * Adds `games.liteboxGameId`: the LaunchBox game GUID a LiteBox server sends for every version/rom
+ * row of one game, null for anything synced before or from a stock RomM. Lets the sync recognise
+ * two rows as versions of the same game when a version switch changes the rommId served.
+ */
+object Migration_183_184 : Migration(183, 184) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `games` ADD COLUMN `liteboxGameId` TEXT")
+        db.execSQL("ALTER TABLE `games` ADD COLUMN `liteboxSupersededBy` INTEGER")
+    }
+}

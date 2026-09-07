@@ -246,6 +246,8 @@ class RomMLibrarySyncService @Inject constructor(
             gamesDeleted += reconcileOrphans(platformId, scope, result.decidedRomIds)
         }
 
+        adoptLegacyGhosts(platformId)
+
         gameRepository.get().validateLocalFilesForPlatform(platformId)
         gameRepository.get().discoverLocalFilesForPlatform(platformId)
         gameRepository.get().validateDiscLocalFiles(platformId)
@@ -467,6 +469,20 @@ class RomMLibrarySyncService @Inject constructor(
             val rommId = game.rommId
             if (rommId != null && rommId < 0) continue
 
+            // BEFORE the visibility gate below: LiteBox answers 501 to /api/permissions/me, so on that
+            // server visibility is always Unavailable, provenDeleted is never true, and every orphan is
+            // kept as a "visibility mask" - measured 2026-09-07: the two versions Yoshi's Island had been
+            // switched away from sat there with their real rommIds, untouched by any pass. A game key
+            // naming a game this client IS served is stronger evidence than any mask: this row is not
+            // hidden by an admin, it is another version of a game we show.
+            if (rommId != null && hasLocalContent(game)) {
+                val by = supersedingLiveSibling(game, serverRomIds)
+                if (by != null) {
+                    markSuperseded(game, by)
+                    continue
+                }
+            }
+
             val provenDeleted = visibility is RomMVisibility.Known &&
                 rommId != null &&
                 !visibility.hides(rommId, game.platformId)
@@ -490,7 +506,8 @@ class RomMLibrarySyncService @Inject constructor(
             }
 
             if (hasLocalContent(game)) {
-                preserveOrphanedGame(game, ownerUserId)
+                val by = supersedingLiveSibling(game, serverRomIds)
+                if (by != null) markSuperseded(game, by) else preserveOrphanedGame(game, ownerUserId)
                 continue
             }
             if (!romVolumesReadable) {
@@ -577,7 +594,8 @@ class RomMLibrarySyncService @Inject constructor(
             val game = gameDao.getById(ref.id) ?: continue
 
             if (hasLocalContent(game)) {
-                preserveOrphanedGame(game, scope.ownerUserId)
+                val by = supersedingLiveSibling(game, serverRomIds.toSet())
+                if (by != null) markSuperseded(game, by) else preserveOrphanedGame(game, scope.ownerUserId)
                 preserved++
                 continue
             }
@@ -833,6 +851,7 @@ class RomMLibrarySyncService @Inject constructor(
             packageName = installedPackageName,
             rommId = rom.id,
             rommFileName = rom.fileName,
+            liteboxGameId = rom.liteboxGameId,
             igdbId = rom.igdbId,
             raId = rom.raId,
             titleId = existing?.titleId,
@@ -1461,6 +1480,120 @@ class RomMLibrarySyncService @Inject constructor(
             gameDiscDao.getDiscsForGame(game.id).any { it.localPath != null } ||
             saveCacheDao.countByGameAllOwners(game.id) > 0 ||
             stateCacheDao.countByGameAllOwners(game.id) > 0
+
+    /**
+     * LiteBox only. An orphan whose liteboxGameId names a game this client IS still served - under
+     * another rommId, i.e. another version the user switched to (RommLiteBoxApi pin) - is not gone,
+     * it is superseded: kept with its OWN rommId (switching back reattaches by id, nothing to
+     * migrate), downloaded file and caches intact, and shown nowhere (GameDao filters on
+     * liteboxSupersededBy) until the server serves it again - a served row is rebuilt from scratch
+     * by syncRom, which resets the mark. Null when no live sibling exists: the caller then falls back
+     * to preserveOrphanedGame, the pre-LiteBox behaviour. Measured 2026-09-06 without this: every
+     * switch left a preserved ghost (negative rommId) and switching back created a THIRD row.
+     */
+    private suspend fun supersedingLiveSibling(game: GameEntity, serverRomIds: Set<Long>?): Superseder? {
+        val key = game.liteboxGameId ?: legacyGameKey(game) ?: return null
+        val live = gameDao.getByLiteboxGameId(game.platformId, key).firstOrNull { sibling ->
+            sibling.id != game.id && sibling.rommId != null && sibling.rommId > 0 &&
+                !sibling.syncDirty && (serverRomIds == null || sibling.rommId in serverRomIds)
+        } ?: return null
+        return Superseder(live, key)
+    }
+
+    private data class Superseder(val live: GameEntity, val key: String)
+
+    /**
+     * A row synced before the key existed - or before this server sent it - carries none, which is
+     * exactly the state of every duplicate already on the device (measured 2026-09-07: three Yoshi's
+     * Island rows, none keyed, a fresh APK against them changed nothing). Its rommId is still a row on
+     * the server - the version it was, just not the one served - so one GET /api/roms/{id} says which
+     * game it belongs to. Null from a stock RomM (no such field), or when the rom is truly gone; the
+     * caller then treats the row as before. Only orphans WITH local content get here, and only once
+     * per sync pass, so this is a handful of requests, never a sweep.
+     */
+    private suspend fun legacyGameKey(game: GameEntity): String? {
+        val rommId = game.rommId?.takeIf { it > 0 } ?: return null
+        return (apiClient.getRom(rommId) as? RomMResult.Success)?.data?.liteboxGameId?.takeIf { it.isNotBlank() }
+    }
+
+    private suspend fun markSuperseded(game: GameEntity, by: Superseder) {
+        // The key travels with the mark: a legacy row learns it here, so the next pass needs no request.
+        gameDao.insert(game.copy(liteboxGameId = by.key, liteboxSupersededBy = by.live.rommId, syncDirty = false))
+        val live = by.live
+        Logger.info(
+            TAG,
+            "reconcileOrphans: ${game.title} (rommId ${game.rommId}) is another version of a served game, " +
+                "superseded by rommId ${live.rommId}; kept, not shown"
+        )
+    }
+
+    /**
+     * LiteBox only, legacy cleanup. Rows preserveOrphanedGame detached BEFORE this client knew about
+     * game keys (rommId negative, no key - measured 2026-09-07: the Yoshi's Island duplicates, which a
+     * fresh APK could not touch and which Argosy offers no way to delete for a RomM game) lost the id
+     * legacyGameKey would need. What they kept is exact enough: the title and the archive's own file
+     * name (fs_name - the same for every entry-anchored version of one archive). A served, keyed row
+     * on the same platform matching both IS the same game, another version of it: the ghost is
+     * claimed - key copied, marked superseded, shown nowhere - with no network call at all. Anything
+     * else is left exactly as it was. Runs after reconcileOrphans so a row detached by THIS pass is
+     * claimed in the same pass.
+     */
+    private suspend fun adoptLegacyGhosts(platformId: Long) {
+        val ghosts = gameDao.getUnclaimedDetachedRows(platformId)
+        if (ghosts.isEmpty()) return
+        val served = gameDao.getServedKeyedRows(platformId)
+        if (served.isEmpty()) return
+        var adopted = 0
+        for (ghost in ghosts) {
+            val archive = ghost.rommFileName?.takeIf { it.isNotBlank() } ?: continue
+            val live = served.firstOrNull { row ->
+                row.title.equals(ghost.title, ignoreCase = true) &&
+                    row.rommFileName.equals(archive, ignoreCase = true)
+            } ?: continue
+            gameDao.insert(
+                ghost.copy(liteboxGameId = live.liteboxGameId, liteboxSupersededBy = live.rommId, syncDirty = false)
+            )
+            adopted++
+        }
+        if (adopted > 0) {
+            Logger.info(
+                TAG,
+                "adoptLegacyGhosts: $adopted detached row(s) on platform $platformId claimed as versions of a served game"
+            )
+        }
+    }
+
+    /**
+     * LiteBox only, run when a game page opens (Mehdi, 2026-09-07): the game being shown is, by
+     * construction, the version this client is served - the server never lists a version the client
+     * switched away from - so every other local row of the same game is a version to hide: same key,
+     * or no key yet (synced before the key existed) but same platform and same title. Independent of
+     * the sync passes on purpose: those sit behind the visibility gate, which LiteBox never opens
+     * (501 on /api/permissions/me). The key is learned from the server when the row lacks it and
+     * persisted, so a later pass needs no request. Returns that key, null on a stock RomM.
+     */
+    suspend fun hideSiblingVersions(gameId: Long): String? = withContext(Dispatchers.IO) {
+        val game = gameDao.getById(gameId) ?: return@withContext null
+        val rommId = game.rommId?.takeIf { it > 0 } ?: return@withContext null
+        val key = game.liteboxGameId
+            ?: (apiClient.getRom(rommId) as? RomMResult.Success)?.data?.liteboxGameId?.takeIf { it.isNotBlank() }
+            ?: return@withContext null
+        if (game.liteboxGameId != key || game.liteboxSupersededBy != null) {
+            gameDao.insert(game.copy(liteboxGameId = key, liteboxSupersededBy = null))
+        }
+        val siblings = gameDao.getKeyedSiblings(game.platformId, key, game.id) +
+            gameDao.getUnkeyedSiblingsByTitle(game.platformId, game.title, game.id)
+        var hidden = 0
+        for (s in siblings) {
+            if (s.liteboxSupersededBy == rommId && s.liteboxGameId == key) continue
+            gameDao.insert(s.copy(liteboxGameId = key, liteboxSupersededBy = rommId))
+            hidden++
+        }
+        if (hidden > 0) {
+            Logger.info(TAG, "hideSiblingVersions: ${game.title} - $hidden other version row(s) hidden behind rommId $rommId")
+        }
+        key
+    }
 
     /**
      * Keeps a game whose rom left the server, under a synthetic id so nothing downstream
