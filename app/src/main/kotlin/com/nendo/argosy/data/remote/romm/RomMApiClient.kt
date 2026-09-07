@@ -369,7 +369,8 @@ class RomMApiClient @Inject constructor(
         userRating: Int? = null,
         userDifficulty: Int? = null,
         userStatus: String? = null,
-        hidden: Boolean? = null
+        hidden: Boolean? = null,
+        liteboxProgress: String? = null
     ): Boolean {
         val currentApi = api ?: return false
         return try {
@@ -377,7 +378,8 @@ class RomMApiClient @Inject constructor(
                 rating = userRating,
                 difficulty = userDifficulty,
                 status = userStatus,
-                hidden = hidden
+                hidden = hidden,
+                liteboxProgress = liteboxProgress
             )
             val response = currentApi.updateRomUserProps(rommId, props)
             response.isSuccessful

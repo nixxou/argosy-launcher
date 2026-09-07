@@ -391,6 +391,7 @@ class SyncCoordinator @Inject constructor(
                 SyncType.RATING -> processProperty(item, signedInUserId)
                 SyncType.DIFFICULTY -> processProperty(item, signedInUserId)
                 SyncType.STATUS -> processProperty(item, signedInUserId)
+                SyncType.LITEBOX_PROGRESS -> processProperty(item, signedInUserId)
                 SyncType.FAVORITE -> processFavorite(item, signedInUserId)
                 SyncType.HIDDEN -> processHidden(item, signedInUserId)
                 SyncType.ACHIEVEMENT -> processAchievement(item)
@@ -578,7 +579,8 @@ class SyncCoordinator @Inject constructor(
             rating = if (item.syncType == SyncType.RATING) payload.intValue else null,
             difficulty = if (item.syncType == SyncType.DIFFICULTY) payload.intValue else null,
             status = if (item.syncType == SyncType.STATUS) payload.stringValue else null,
-            hidden = null
+            hidden = null,
+            liteboxProgress = if (item.syncType == SyncType.LITEBOX_PROGRESS) payload.stringValue else null
         )
         return writeUserProps(item, signedInUserId, props)
     }
@@ -613,7 +615,8 @@ class SyncCoordinator @Inject constructor(
                 userRating = props.rating,
                 userDifficulty = props.difficulty,
                 userStatus = props.status,
-                hidden = props.hidden
+                hidden = props.hidden,
+                liteboxProgress = props.liteboxProgress
             )
         }
     }

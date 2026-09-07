@@ -3558,3 +3558,9 @@ object Migration_183_184 : Migration(183, 184) {
         db.execSQL("ALTER TABLE `games` ADD COLUMN `liteboxSupersededBy` INTEGER")
     }
 }
+
+object Migration_184_185 : Migration(184, 185) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `games` ADD COLUMN `liteboxProgress` TEXT")
+    }
+}

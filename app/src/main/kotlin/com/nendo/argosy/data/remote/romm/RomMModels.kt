@@ -50,6 +50,8 @@ data class RomMRom(
     // LiteBox only (sent back to a client carrying X-LiteBox-Client, see RomMApiFactory): the
     // LaunchBox game GUID shared by every version/rom row of one game. Null from a stock RomM.
     @Json(name = "litebox_game_id") val liteboxGameId: String? = null,
+    // LaunchBox's own Progress entry ("Done / Beaten"), sent to LiteBox clients only. Null from a stock RomM.
+    @Json(name = "litebox_progress") val liteboxProgress: String? = null,
     @Json(name = "hasheous_id") val hasheousId: Long? = null,
     @Json(name = "tgdb_id") val tgdbId: Long? = null,
     @Json(name = "hltb_id") val hltbId: Long? = null,
@@ -449,7 +451,8 @@ data class RomMRomUser(
     @Json(name = "backlogged") val backlogged: Boolean = false,
     @Json(name = "now_playing") val nowPlaying: Boolean = false,
     @Json(name = "hidden") val hidden: Boolean = false,
-    @Json(name = "last_played") val lastPlayed: String? = null
+    @Json(name = "last_played") val lastPlayed: String? = null,
+    @Json(name = "litebox_progress") val liteboxProgress: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -460,7 +463,9 @@ data class RomMUserPropsUpdateData(
     @Json(name = "status") val status: String? = null,
     @Json(name = "backlogged") val backlogged: Boolean? = null,
     @Json(name = "now_playing") val nowPlaying: Boolean? = null,
-    @Json(name = "hidden") val hidden: Boolean? = null
+    @Json(name = "hidden") val hidden: Boolean? = null,
+    /** LiteBox only: one entry of /api/litebox/progress/values, written to LaunchBox verbatim. */
+    @Json(name = "litebox_progress") val liteboxProgress: String? = null
 )
 
 @JsonClass(generateAdapter = true)

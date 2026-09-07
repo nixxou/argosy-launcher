@@ -62,6 +62,7 @@ fun GameEntity.toGameDetailUi(
         userDifficulty = userDifficulty,
         completion = completion,
         status = status,
+        liteboxProgress = liteboxProgress,
         isRommGame = isRommGame,
         isFavorite = isFavorite,
         playCount = playCount,

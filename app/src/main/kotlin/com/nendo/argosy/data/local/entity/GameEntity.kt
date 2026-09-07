@@ -54,6 +54,9 @@ data class GameEntity(
     // currently served (its rommId) - this row is a version the user switched away from, kept for
     // its downloaded file and caches but shown nowhere. Cleared the moment the server serves it again.
     val liteboxSupersededBy: Long? = null,
+    // LiteBox only: LaunchBox's own Progress entry for this game ("Done / Beaten"), the richer truth
+    // behind [status]. Shown and chosen as-is on a LiteBox server; null everywhere else.
+    val liteboxProgress: String? = null,
     val igdbId: Long?,
     val raId: Long? = null,
     val steamAppId: Long? = null,

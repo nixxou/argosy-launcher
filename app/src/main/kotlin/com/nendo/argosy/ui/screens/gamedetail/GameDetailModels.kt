@@ -82,6 +82,8 @@ data class GameDetailUi(
     val userDifficulty: Int,
     val completion: Int,
     val status: String?,
+    // LiteBox only: LaunchBox's own Progress entry, the text the chip shows when present.
+    val liteboxProgress: String? = null,
     val isRommGame: Boolean,
     val isFavorite: Boolean,
     val playCount: Int,
@@ -253,6 +255,8 @@ data class GameDetailUiState(
     val ratingPickerValue: Int = 0,
     val showStatusPicker: Boolean = false,
     val statusPickerValue: String? = null,
+    // Non-empty on a LiteBox server: the picker lists these instead of RomM's five statuses.
+    val liteBoxProgressValues: List<com.nendo.argosy.data.remote.romm.LiteBoxProgressValue> = emptyList(),
     val showRatingsStatusMenu: Boolean = false,
     val ratingsStatusFocusIndex: Int = 0,
     val showMissingDiscPrompt: Boolean = false,

@@ -50,6 +50,7 @@ enum class SyncType {
     RATING,
     DIFFICULTY,
     STATUS,
+    LITEBOX_PROGRESS,
     FAVORITE,
     HIDDEN,
     ACHIEVEMENT,

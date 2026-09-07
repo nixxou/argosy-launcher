@@ -398,4 +398,7 @@ interface RomMApi {
     suspend fun pollLiteBoxRaCredentials(
         @Path("requestId") requestId: String
     ): Response<LiteBoxRaCredentials>
+
+    @GET("api/litebox/progress/values")
+    suspend fun getLiteBoxProgressValues(): Response<List<LiteBoxProgressValue>>
 }

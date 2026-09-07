@@ -230,7 +230,7 @@ fun GameHeader(
                     PlayTimeChip(minutes = game.playTimeMinutes)
                 }
                 game.status?.let { status ->
-                    StatusChip(statusValue = status)
+                    StatusChip(statusValue = status, liteBoxProgress = game.liteboxProgress)
                 }
             }
 
