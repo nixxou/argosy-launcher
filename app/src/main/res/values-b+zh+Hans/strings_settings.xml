@@ -2155,4 +2155,7 @@
     <string name="settings_main_language_subtitle">更改启动器中的全部文字</string>
     <string name="settings_main_language_system_default">跟随系统</string>
 
+    <string name="settings_saves_protect_stale_resume_title">防止过期的自动存档状态</string>
+    <string name="settings_saves_protect_stale_resume_subtitle_on">比当前存档更旧的自动/继续状态将被丢弃而不是加载</string>
+    <string name="settings_saves_protect_stale_resume_subtitle_off">内置核心始终从上次的自动/继续状态恢复</string>
 </resources>

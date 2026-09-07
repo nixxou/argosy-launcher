@@ -2306,4 +2306,8 @@
     <string name="settings_main_language_title">Язык</string>
     <string name="settings_main_language_subtitle">Изменить язык текста во всём лаунчере</string>
     <string name="settings_main_language_system_default">Как в системе</string>
+
+    <string name="settings_saves_protect_stale_resume_title">Защита от устаревших автосостояний</string>
+    <string name="settings_saves_protect_stale_resume_subtitle_on">Автосостояние или состояние возобновления старше активного сохранения удаляется, а не загружается</string>
+    <string name="settings_saves_protect_stale_resume_subtitle_off">Встроенное ядро всегда возобновляет игру с последнего автосостояния</string>
 </resources>

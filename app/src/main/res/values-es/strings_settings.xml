@@ -2267,4 +2267,8 @@
     <string name="settings_main_language_title">Idioma</string>
     <string name="settings_main_language_subtitle">Cambia el texto en todo el lanzador</string>
     <string name="settings_main_language_system_default">Predeterminado del sistema</string>
+
+    <string name="settings_saves_protect_stale_resume_title">Proteger contra estados automáticos obsoletos</string>
+    <string name="settings_saves_protect_stale_resume_subtitle_on">Un estado automático o de reanudación más antiguo que la partida activa se descarta en lugar de cargarse</string>
+    <string name="settings_saves_protect_stale_resume_subtitle_off">El núcleo integrado siempre reanuda desde su último estado automático o de reanudación</string>
 </resources>

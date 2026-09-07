@@ -1461,6 +1461,7 @@ class SettingsViewModel @Inject constructor(
     fun toggleSecureSaves() = syncDelegate.toggleSecureSaves(viewModelScope)
     fun confirmDisableSecureSaves() = syncDelegate.confirmDisableSecureSaves(viewModelScope)
     fun cancelDisableSecureSaves() = syncDelegate.cancelDisableSecureSaves()
+    fun toggleProtectAgainstStaleResume() = syncDelegate.toggleProtectAgainstStaleResume(viewModelScope)
     fun cycleSaveCacheLimit(direction: Int = 1) = syncDelegate.cycleSaveCacheLimit(viewModelScope, direction)
     fun setSaveCacheLimit(limit: Int) = syncDelegate.setSaveCacheLimit(viewModelScope, limit)
 

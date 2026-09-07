@@ -478,6 +478,14 @@
     <!-- Second line of that row when it is unavailable. "RomM" is the server software's name. -->
     <string name="settings_saves_secure_saves_locked_subtitle">Requires a RomM server</string>
 
+    <!-- Row title. Noun phrase: the guard that keeps the built-in core's own auto/resume state from
+         reloading over a save that was just replaced (server pull, history restore, channel switch). -->
+    <string name="settings_saves_protect_stale_resume_title">Protect against stale auto-states</string>
+    <!-- Second line of that row while the guard is on. -->
+    <string name="settings_saves_protect_stale_resume_subtitle_on">An auto/resume state older than the active save is dropped instead of loaded</string>
+    <!-- Second line of that row while it is off. -->
+    <string name="settings_saves_protect_stale_resume_subtitle_off">The built-in core always resumes from its last auto/resume state</string>
+
     <!-- Row title. Noun phrase: how many old saves are kept on the device. -->
     <string name="settings_saves_cache_limit_title">Local Save Cache</string>
     <!-- Value of that row. %d is how many saves are kept for each game. -->

@@ -1990,4 +1990,8 @@
     <string name="settings_main_language_title">語言</string>
     <string name="settings_main_language_subtitle">變更啟動器中所有文字使用的語言</string>
     <string name="settings_main_language_system_default">系統預設</string>
+
+    <string name="settings_saves_protect_stale_resume_title">防止過期的自動存檔狀態</string>
+    <string name="settings_saves_protect_stale_resume_subtitle_on">比目前存檔更舊的自動/繼續狀態將被捨棄而不載入</string>
+    <string name="settings_saves_protect_stale_resume_subtitle_off">內建核心始終從上次的自動/繼續狀態恢復</string>
 </resources>

@@ -1017,6 +1017,7 @@ data class SyncSettingsState(
     val saveSyncEnabled: Boolean = false,
     val secureSaves: Boolean = true,
     val showSecureSavesConfirm: Boolean = false,
+    val protectAgainstStaleResume: Boolean = true,
     val saveCacheLimit: Int = 10,
     val pendingUploadsCount: Int = 0,
     val hasStoragePermission: Boolean = false,

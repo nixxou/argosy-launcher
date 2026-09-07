@@ -4,13 +4,17 @@ import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.model.GameSource
+import com.nendo.argosy.data.preferences.UserPreferences
+import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.repository.SaveCacheManager
 import com.nendo.argosy.data.repository.SaveSyncRepository
 import com.nendo.argosy.domain.model.UnifiedSaveEntry
 import com.nendo.argosy.domain.model.UnifiedSaveEntry.Source
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
@@ -56,12 +60,19 @@ class RestoreCachedSaveServerCachingTest {
         saveSyncRepository = mockk(relaxed = true)
         gameDao = mockk(relaxed = true)
         emulatorResolver = mockk(relaxed = true)
+        // The stale-resume guard (8ebbf180) reads the preference through a Flow; a relaxed mock's
+        // Flow never emits and first() would hang, so it gets a real one with the defaults.
+        val preferencesRepository = mockk<UserPreferencesRepository>(relaxed = true) {
+            every { userPreferences } returns flowOf(UserPreferences())
+        }
         useCase = RestoreCachedSaveUseCase(
             saveCacheManager,
             saveSyncRepository,
             gameDao,
             mockk(relaxed = true),
-            emulatorResolver
+            emulatorResolver,
+            mockk(relaxed = true),
+            preferencesRepository
         )
 
         coEvery { gameDao.getById(gameId) } returns game
