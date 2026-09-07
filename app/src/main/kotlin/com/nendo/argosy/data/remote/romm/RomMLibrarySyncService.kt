@@ -469,6 +469,20 @@ class RomMLibrarySyncService @Inject constructor(
             val rommId = game.rommId
             if (rommId != null && rommId < 0) continue
 
+            // BEFORE the visibility gate below: LiteBox answers 501 to /api/permissions/me, so on that
+            // server visibility is always Unavailable, provenDeleted is never true, and every orphan is
+            // kept as a "visibility mask" - measured 2026-09-07: the two versions Yoshi's Island had been
+            // switched away from sat there with their real rommIds, untouched by any pass. A game key
+            // naming a game this client IS served is stronger evidence than any mask: this row is not
+            // hidden by an admin, it is another version of a game we show.
+            if (rommId != null && hasLocalContent(game)) {
+                val by = supersedingLiveSibling(game, serverRomIds)
+                if (by != null) {
+                    markSuperseded(game, by)
+                    continue
+                }
+            }
+
             val provenDeleted = visibility is RomMVisibility.Known &&
                 rommId != null &&
                 !visibility.hides(rommId, game.platformId)
