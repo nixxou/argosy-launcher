@@ -23,6 +23,11 @@ class RestoreSaveChannelPointUseCase @Inject constructor(
         coreId: String? = null
     ) {
         val context = contextResolver.resolve(gameId, coreId)
+        com.nendo.argosy.util.SaveDebugLogger.logCustom(
+            event = "RESTORE_POINT", gameId = gameId, gameName = null, channel = channelName,
+            details = "isLatest=$isLatest, movesStates=${context.movesStates}, emulator=${context.emulatorId}" +
+                ", core=${context.coreId}, package=${context.emulatorPackage}, skipAutoState=${!isLatest}"
+        )
         if (!context.movesStates) return
 
         restoreCachedStatesUseCase(
@@ -37,6 +42,7 @@ class RestoreSaveChannelPointUseCase @Inject constructor(
         val romPath = context.romPath ?: return
         val emulatorId = context.emulatorId ?: return
         val platformSlug = context.platformSlug ?: return
+        com.nendo.argosy.util.SaveDebugLogger.logResumeStateGuard(gameId, emulatorId, "history point (not latest)", null, null, "delete auto/resume states")
         stateCacheManager.deleteAutoResumeStatesFromDisk(
             emulatorId = emulatorId,
             romPath = romPath,

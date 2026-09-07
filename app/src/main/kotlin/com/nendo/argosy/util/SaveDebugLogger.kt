@@ -621,6 +621,150 @@ object SaveDebugLogger {
         )
     }
 
+    // ── Restore paths (Mehdi, 2026-09-08): every file a save/state restore reads or writes, with its
+    // full path and hash. Unlike the sync events above these keep the FULL path on purpose: the
+    // question they answer is "where did it land, under what name, with what content". Cost is paid
+    // only while the option is on - callers guard hashing with isEnabled.
+
+    /** MD5 of a file, or a size-only summary for a folder; null when unreadable. Only while enabled. */
+    fun describeFile(path: String?): String {
+        if (path == null) return "null"
+        val f = File(path)
+        if (!f.exists()) return "$path (missing)"
+        if (f.isDirectory) {
+            val files = f.walkTopDown().filter { it.isFile }.toList()
+            return "$path (dir, ${files.size} files, ${formatBytesStable(files.sumOf { it.length() })})"
+        }
+        val hash = if (enabled) fileHash(f) else null
+        return "$path (${formatBytesStable(f.length())}, md5=${hash ?: "?"}, mtime=${formatMillis(f.lastModified())})"
+    }
+
+    fun fileHash(file: File): String? = try {
+        val md = java.security.MessageDigest.getInstance("MD5")
+        file.inputStream().buffered().use { input ->
+            val buffer = ByteArray(64 * 1024)
+            while (true) {
+                val n = input.read(buffer)
+                if (n <= 0) break
+                md.update(buffer, 0, n)
+            }
+        }
+        md.digest().joinToString("") { "%02x".format(it) }
+    } catch (_: Exception) { null }
+
+    fun bytesHash(data: ByteArray): String =
+        java.security.MessageDigest.getInstance("MD5").digest(data).joinToString("") { "%02x".format(it) }
+
+    private fun formatMillis(ms: Long): String =
+        if (ms <= 0) "-" else DateTimeFormatter.ofPattern("MM-dd HH:mm:ss").withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(ms))
+
+    /** A save restore (manual, from the save-management screen) starts: what was picked and where it lands. */
+    fun logRestoreSaveBegin(gameId: Long, channel: String?, source: String, cacheId: Long?, serverSaveId: Long?,
+                            emulatorId: String, targetPath: String, previousHash: String?) {
+        log("RESTORE_SAVE_BEGIN", gameId, null, channel,
+            "source=$source, cacheId=$cacheId, rommSaveId=$serverSaveId, emulator=$emulatorId" +
+            ", target=${describeFile(targetPath)}, previousHash=${previousHash ?: "null"}")
+    }
+
+    fun logRestoreSaveDone(gameId: Long, channel: String?, targetPath: String, restoredHash: String?,
+                           previousHash: String?, activated: String) {
+        val changed = if (previousHash == null || restoredHash == null) "unknown" else (previousHash != restoredHash).toString()
+        log("RESTORE_SAVE_DONE", gameId, null, channel,
+            "target=${describeFile(targetPath)}, restoredHash=${restoredHash ?: "null"}, changed=$changed, active=$activated")
+    }
+
+    fun logRestoreSaveFailed(gameId: Long, channel: String?, reason: String) {
+        log("RESTORE_SAVE_FAILED", gameId, null, channel, "reason=$reason")
+    }
+
+    /** The stale-resume guard's decision: did a content change wipe the built-in core's auto/resume states? */
+    fun logResumeStateGuard(gameId: Long?, emulatorId: String, trigger: String, previousHash: String?,
+                            newHash: String?, decision: String) {
+        log("RESUME_STATE_GUARD", gameId, null, null,
+            "trigger=$trigger, emulator=$emulatorId, previous=${previousHash?.take(12) ?: "null"}" +
+            ", new=${newHash?.take(12) ?: "null"}, decision=$decision")
+    }
+
+    fun logLiveStateDeleted(gameId: Long?, path: String, sizeBytes: Long) {
+        log("LIVE_STATE_DELETED", gameId, null, null, "file=$path (${formatBytesStable(sizeBytes)})")
+    }
+
+    fun logLiveStateSweep(gameId: Long?, emulatorId: String, dirs: List<String>, names: List<String>, deleted: Int) {
+        log("LIVE_STATE_SWEEP", gameId, null, null,
+            "emulator=$emulatorId, deleted=$deleted, names=$names, dirs=$dirs")
+    }
+
+    /** A cached save state is about to be written back to where the emulator reads it. */
+    fun logStateRestoreBegin(gameId: Long, cacheId: Long, slot: Int, channel: String?, emulatorId: String,
+                             cachedCore: String?, cachedVersion: String?, currentCore: String?, currentVersion: String?,
+                             forced: Boolean) {
+        log("STATE_RESTORE_BEGIN", gameId, null, channel,
+            "cacheId=$cacheId, slot=$slot, emulator=$emulatorId, cachedCore=$cachedCore/$cachedVersion" +
+            ", currentCore=$currentCore/$currentVersion, forced=$forced")
+    }
+
+    fun logStateRestored(gameId: Long, cacheId: Long, slot: Int, channel: String?, cacheFile: String,
+                         targetPath: String, screenshot: Boolean) {
+        log("STATE_RESTORED", gameId, null, channel,
+            "cacheId=$cacheId, slot=$slot, from=${describeFile(cacheFile)}, to=${describeFile(targetPath)}, screenshot=$screenshot")
+    }
+
+    fun logStateRestoreFailed(gameId: Long?, cacheId: Long, reason: String) {
+        log("STATE_RESTORE_FAILED", gameId, null, null, "cacheId=$cacheId, reason=$reason")
+    }
+
+    /** A live state file was copied into the state cache. */
+    fun logStateCached(gameId: Long, slot: Int, channel: String?, emulatorId: String, coreId: String?,
+                       sourcePath: String, cachePath: String, cacheId: Long?, screenshot: Boolean) {
+        log("STATE_CACHED", gameId, null, channel,
+            "cacheId=$cacheId, slot=$slot, emulator=$emulatorId, core=$coreId, from=$sourcePath" +
+            ", to=${describeFile(cachePath)}, screenshot=$screenshot")
+    }
+
+    /** A state came down from the server into the cache (not yet on the emulator's disk). */
+    fun logStateDownloaded(gameId: Long, rommStateId: Long, fileName: String, slot: Int, channel: String?,
+                           cachePath: String, contentHash: String, cacheId: Long?) {
+        log("STATE_DOWNLOADED", gameId, null, channel,
+            "rommStateId=$rommStateId, cacheId=$cacheId, file=$fileName, slot=$slot, to=$cachePath, md5=$contentHash")
+    }
+
+    /** A server save (or a cache hit standing in for it) landed on the emulator's disk. */
+    fun logSaveLanded(gameId: Long, channel: String?, targetPath: String, serverHash: String?, viaCacheId: Long?) {
+        log("SAVE_LANDED", gameId, null, channel,
+            "target=${describeFile(targetPath)}, serverHash=${serverHash ?: "null"}" +
+            (viaCacheId?.let { ", viaCacheId=$it" } ?: ", via=network"))
+    }
+
+    // ── The built-in core (LibretroActivity / SaveStateManager) ──
+
+    /** Which SRAM the built-in core starts from, and the .srm it was written to. */
+    fun logBuiltinSramRestore(gameId: Long?, mode: String, source: String, cacheId: Long?, channel: String?,
+                              bytes: ByteArray?, targetPath: String) {
+        log("BUILTIN_SRAM_RESTORE", gameId, null, channel,
+            "mode=$mode, source=$source, cacheId=$cacheId, bytes=${bytes?.size ?: -1}" +
+            ", md5=${bytes?.let { bytesHash(it) } ?: "null"}, target=$targetPath")
+    }
+
+    fun logBuiltinSramWrite(gameId: Long?, channel: String?, targetPath: String, bytes: Int, hash: String) {
+        log("BUILTIN_SRAM_WRITE", gameId, null, channel, "bytes=$bytes, md5=$hash, target=$targetPath")
+    }
+
+    fun logBuiltinSlotLoad(gameId: Long?, slot: Int, path: String, bytes: Int, hash: String?, outcome: String) {
+        log("BUILTIN_STATE_LOAD", gameId, null, null,
+            "slot=$slot, file=$path, bytes=$bytes, md5=${hash ?: "?"}, outcome=$outcome")
+    }
+
+    fun logBuiltinSlotSave(gameId: Long?, slot: Int, path: String, bytes: Int, hash: String?, screenshot: Boolean) {
+        log("BUILTIN_STATE_SAVE", gameId, null, null,
+            "slot=$slot, file=$path, bytes=$bytes, md5=${hash ?: "?"}, screenshot=$screenshot")
+    }
+
+    /** attemptAutoRestore's decisions at launch: which file, why it was loaded, skipped or discarded. */
+    fun logBuiltinAutoRestore(gameId: Long?, decision: String, path: String?, details: String? = null) {
+        log("BUILTIN_AUTO_RESTORE", gameId, null, null,
+            "decision=$decision" + (path?.let { ", file=${describeFile(it)}" } ?: "") + (details?.let { ", $it" } ?: ""))
+    }
+
     private fun log(
         event: String,
         gameId: Long?,

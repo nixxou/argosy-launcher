@@ -270,6 +270,11 @@ class StateCacheManager @Inject constructor(
 
             val id = stateCacheDao.upsert(entity)
             Log.d(TAG, "Cached state for game $gameId slot $slotNumber at $cachePath")
+            com.nendo.argosy.util.SaveDebugLogger.logStateCached(
+                gameId = gameId, slot = slotNumber, channel = channelName, emulatorId = emulatorId, coreId = coreId,
+                sourcePath = statePath, cachePath = cachedFile.absolutePath, cacheId = id,
+                screenshot = screenshotCachePath != null
+            )
 
             if (isLiveStatePath(statePath)) {
                 stateOwnershipTracker.record(
@@ -303,6 +308,7 @@ class StateCacheManager @Inject constructor(
         val cacheFile = File(cacheBaseDir, entity.cachePath)
         if (!cacheFile.exists()) {
             Log.e(TAG, "State cache file not found: ${entity.cachePath}")
+            com.nendo.argosy.util.SaveDebugLogger.logStateRestoreFailed(entity.gameId, cacheId, "cache file missing: ${cacheFile.absolutePath}")
             return@withContext false
         }
 
@@ -312,6 +318,11 @@ class StateCacheManager @Inject constructor(
             cacheFile.copyTo(targetFile, overwrite = true)
 
             Log.d(TAG, "Restored state from cache $cacheId to $targetPath")
+            com.nendo.argosy.util.SaveDebugLogger.logStateRestored(
+                gameId = entity.gameId, cacheId = cacheId, slot = entity.slotNumber, channel = entity.channelName,
+                cacheFile = cacheFile.absolutePath, targetPath = targetPath,
+                screenshot = getScreenshotFile(entity) != null
+            )
             stateOwnershipTracker.record(
                 statePath = targetPath,
                 emulatorId = entity.emulatorId,
@@ -325,6 +336,7 @@ class StateCacheManager @Inject constructor(
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to restore state from cache", e)
+            com.nendo.argosy.util.SaveDebugLogger.logStateRestoreFailed(entity.gameId, cacheId, "write failed: ${e.message}")
             false
         }
     }
@@ -959,19 +971,24 @@ class StateCacheManager @Inject constructor(
         )
 
         var deletedAny = false
+        var deletedCount = 0
         for (path in statePaths) {
             val stateDir = File(path)
             if (!stateDir.exists()) continue
             for (name in fileNames) {
                 val file = File(stateDir, name)
+                val sizeBefore = if (file.exists()) file.length() else -1L
                 if (file.exists() && file.delete()) {
                     File("${file.absolutePath}.png").takeIf { it.exists() }?.delete()
                     Log.d(TAG, "Deleted live state: ${file.absolutePath}")
+                    com.nendo.argosy.util.SaveDebugLogger.logLiveStateDeleted(gameId, file.absolutePath, sizeBefore)
                     deletedAny = true
+                    deletedCount++
                 }
             }
         }
         if (!deletedAny) Log.d(TAG, "deleteAutoResumeStatesFromDisk: nothing to delete for $romBaseName")
+        com.nendo.argosy.util.SaveDebugLogger.logLiveStateSweep(gameId, emulatorId, statePaths, fileNames, deletedCount)
         deletedAny
     }
 
@@ -1171,6 +1188,10 @@ class StateCacheManager @Inject constructor(
 
             val contentHash = calculateFileHash(cachedFile)
             val cachePath = "$relativeDir/$fileName"
+            com.nendo.argosy.util.SaveDebugLogger.logStateDownloaded(
+                gameId = gameId, rommStateId = rommStateId, fileName = fileName, slot = parsedSlot,
+                channel = channelName, cachePath = cachedFile.absolutePath, contentHash = contentHash, cacheId = null
+            )
             val now = Instant.now()
 
             val existing = stateCacheDao.getBySlotAndCore(

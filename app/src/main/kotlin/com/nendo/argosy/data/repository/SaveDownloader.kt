@@ -75,10 +75,17 @@ class SaveDownloader @Inject constructor(
         coreId: String?,
         gameId: Long
     ) {
-        if (emulatorId != "builtin") return
-        if (previousHash == null || newHash == null || previousHash == newHash) return
-        if (!syncPreferencesRepository.isProtectAgainstStaleResume()) return
-        if (romPath == null) return
+        val guardOn = syncPreferencesRepository.isProtectAgainstStaleResume()
+        val decision = when {
+            emulatorId != "builtin" -> "skip: not the built-in core"
+            previousHash == null || newHash == null -> "skip: a hash is unknown"
+            previousHash == newHash -> "skip: same content"
+            !guardOn -> "skip: protectAgainstStaleResume off"
+            romPath == null -> "skip: no ROM path"
+            else -> "delete auto/resume states"
+        }
+        SaveDebugLogger.logResumeStateGuard(gameId, emulatorId, "server download", previousHash, newHash, decision)
+        if (!decision.startsWith("delete") || romPath == null) return
         stateCacheManager.get().deleteAutoResumeStatesFromDisk(
             emulatorId = emulatorId,
             romPath = romPath,
@@ -339,6 +346,7 @@ class SaveDownloader @Inject constructor(
                         saveCacheDao.updateCachedAt(cachedMatch.id, serverTimestamp)
                     }
                     activeSaveRepository.activateCache(gameId, cachedMatch.id)
+                    SaveDebugLogger.logSaveLanded(gameId, channelName, preDownloadTargetPath, serverSave.contentHash, viaCacheId = cachedMatch.id)
                     clearResumeStateIfContentChanged(
                         emulatorId = resolvedEmulatorId,
                         previousHash = syncEntity.localContentHash,
@@ -675,6 +683,7 @@ class SaveDownloader @Inject constructor(
 
             val serverTimestamp = SaveSyncApiClient.parseTimestamp(serverSave.updatedAt)
             File(targetPath).setLastModified(serverTimestamp.toEpochMilli())
+            SaveDebugLogger.logSaveLanded(gameId, channelName, targetPath, serverSave.contentHash, viaCacheId = null)
 
             if (isSwitchEmulator && game.titleId == null) {
                 val extractedTitleId = File(targetPath).name

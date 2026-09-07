@@ -2484,46 +2484,66 @@ class LibretroActivity : ComponentActivity() {
         val sramFile = saveStateManager.getSramFile()
         if (!sramFile.exists() || sramFile.lastModified() <= slotFile.lastModified()) return false
         Log.w(TAG, "Discarding stale resume state (older than the SRAM save): ${slotFile.absolutePath}")
+        com.nendo.argosy.util.SaveDebugLogger.logBuiltinAutoRestore(gameId.takeIf { it >= 0 }, "discard: older than the SRAM save", slotFile.absolutePath,
+            "sram=${com.nendo.argosy.util.SaveDebugLogger.describeFile(sramFile.absolutePath)}")
         slotFile.delete()
         File("${slotFile.absolutePath}.png").takeIf { it.exists() }?.delete()
         return true
     }
 
     private fun attemptAutoRestore() {
-        if (isGuestJoinedSession) return
+        val gid = gameId.takeIf { it >= 0 }
+        if (isGuestJoinedSession) {
+            com.nendo.argosy.util.SaveDebugLogger.logBuiltinAutoRestore(gid, "skip: guest-joined session", null)
+            return
+        }
         val resumeFile = saveStateManager.getSlotFile(SaveStateManager.RESUME_SLOT)
         if (resumeFile.exists()) {
             if (isStaleAgainstSram(resumeFile)) return
             if (!canSerialize) {
                 Log.w(TAG, "One-shot resume state kept: core=$resolvedCoreId cannot load it in this session")
+                com.nendo.argosy.util.SaveDebugLogger.logBuiltinAutoRestore(gid, "keep resume state: core $resolvedCoreId cannot serialize", resumeFile.absolutePath)
                 return
             }
             if (saveStateManager.performSlotLoad(retroView, SaveStateManager.RESUME_SLOT)) {
                 inGameMessage = getString(R.string.ingame_libretro_resume_success)
+                com.nendo.argosy.util.SaveDebugLogger.logBuiltinAutoRestore(gid, "loaded one-shot resume state, file deleted", resumeFile.absolutePath)
             } else {
                 inGameMessage = getString(R.string.ingame_libretro_resume_restore_failure)
                 Log.w(TAG, "Failed to restore one-shot resume state")
+                com.nendo.argosy.util.SaveDebugLogger.logBuiltinAutoRestore(gid, "resume state load FAILED, file deleted", resumeFile.absolutePath)
             }
             resumeFile.delete()
             return
         }
-        if (launchMode != LaunchMode.RESUME || !canSerialize) return
+        if (launchMode != LaunchMode.RESUME || !canSerialize) {
+            com.nendo.argosy.util.SaveDebugLogger.logBuiltinAutoRestore(gid, "skip auto state: launchMode=$launchMode, canSerialize=$canSerialize", null)
+            return
+        }
         val autoFile = saveStateManager.getSlotFile(SaveStateManager.AUTO_SLOT)
-        if (!autoFile.exists()) return
+        if (!autoFile.exists()) {
+            com.nendo.argosy.util.SaveDebugLogger.logBuiltinAutoRestore(gid, "no auto state on disk", autoFile.absolutePath)
+            return
+        }
         if (isStaleAgainstSram(autoFile)) return
 
         val settings = kotlinx.coroutines.runBlocking {
             effectiveLibretroSettingsResolver.getEffectiveSettings(platformId, platformSlug)
         }
 
-        if (!settings.autoRestoreState || hardcoreMode) return
+        if (!settings.autoRestoreState || hardcoreMode) {
+            com.nendo.argosy.util.SaveDebugLogger.logBuiltinAutoRestore(gid, "skip auto state: autoRestoreState=${settings.autoRestoreState}, hardcore=$hardcoreMode", autoFile.absolutePath)
+            return
+        }
 
         if (saveStateManager.performSlotLoad(retroView, SaveStateManager.AUTO_SLOT)) {
             inGameMessage = getString(R.string.ingame_libretro_auto_restore_success)
             Log.d(TAG, "Auto-restored state from auto slot")
+            com.nendo.argosy.util.SaveDebugLogger.logBuiltinAutoRestore(gid, "loaded auto state", autoFile.absolutePath)
         } else {
             inGameMessage = getString(R.string.ingame_libretro_auto_restore_failure)
             Log.w(TAG, "Failed to auto-restore state from auto slot")
+            com.nendo.argosy.util.SaveDebugLogger.logBuiltinAutoRestore(gid, "auto state load FAILED", autoFile.absolutePath)
         }
     }
 

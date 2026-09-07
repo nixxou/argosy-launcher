@@ -52,7 +52,15 @@ class RestoreStateUseCase @Inject constructor(
             ?: return RestoreStateResult.NotFound
 
         val config = StatePathRegistry.getConfig(emulatorId)
-            ?: return RestoreStateResult.NoConfig
+            ?: run {
+                com.nendo.argosy.util.SaveDebugLogger.logStateRestoreFailed(cache.gameId, cacheId, "no state config for emulator $emulatorId")
+                return RestoreStateResult.NoConfig
+            }
+        com.nendo.argosy.util.SaveDebugLogger.logStateRestoreBegin(
+            gameId = cache.gameId, cacheId = cacheId, slot = cache.slotNumber, channel = cache.channelName,
+            emulatorId = emulatorId, cachedCore = cache.coreId, cachedVersion = cache.coreVersion,
+            currentCore = currentCoreId, currentVersion = currentCoreVersion, forced = forceRestore
+        )
 
         if (!forceRestore) {
             val validation = stateCacheManager.validateCoreVersion(
@@ -62,6 +70,7 @@ class RestoreStateUseCase @Inject constructor(
             )
 
             if (validation is VersionValidationResult.Mismatch) {
+                com.nendo.argosy.util.SaveDebugLogger.logStateRestoreFailed(cache.gameId, cacheId, "core version mismatch (asking the user)")
                 return RestoreStateResult.VersionMismatch(
                     savedCoreId = cache.coreId,
                     savedVersion = cache.coreVersion,
@@ -81,7 +90,10 @@ class RestoreStateUseCase @Inject constructor(
             coreName = currentCoreId ?: cache.coreId,
             romPath = romPath,
             gameId = cache.gameId,
-        ) ?: return RestoreStateResult.Error(RestoreStateFailureReason.TargetPathUnresolved)
+        ) ?: run {
+            com.nendo.argosy.util.SaveDebugLogger.logStateRestoreFailed(cache.gameId, cacheId, "target path unresolved (emulator=$emulatorId, core=${currentCoreId ?: cache.coreId})")
+            return RestoreStateResult.Error(RestoreStateFailureReason.TargetPathUnresolved)
+        }
 
         val success = stateCacheManager.restoreState(cacheId, targetPath)
         return if (success) {

@@ -196,6 +196,7 @@ class SaveStateManager(
             if (sramFile.exists()) {
                 val bytes = sramFile.readBytes()
                 Log.i(TAG, "Honoring explicit restore (activeSaveApplied): on-disk .srm ${bytes.size} bytes")
+                com.nendo.argosy.util.SaveDebugLogger.logBuiltinSramRestore(gameId.takeIf { it >= 0 }, launchMode.name, "on-disk .srm (explicit restore applied)", activeSave.id, activeSave.channelName, bytes, sramFile.absolutePath)
                 return RestoreResult(bytes)
             }
         }
@@ -222,6 +223,7 @@ class SaveStateManager(
                     Log.d(TAG, "Deleted existing save file for fresh start")
                 }
                 deleteAllStates()
+                com.nendo.argosy.util.SaveDebugLogger.logBuiltinSramRestore(gameId.takeIf { it >= 0 }, launchMode.name, "fresh start: .srm deleted, all states deleted", null, channelName, null, sramFile.absolutePath)
                 RestoreResult(null)
             }
             LaunchMode.RESUME_HARDCORE -> {
@@ -236,6 +238,7 @@ class SaveStateManager(
                     if (bytes != null) {
                         getSramFile().writeBytes(bytes)
                         Log.d(TAG, "Restored hardcore save (${bytes.size} bytes, valid=$isValid)")
+                        com.nendo.argosy.util.SaveDebugLogger.logBuiltinSramRestore(gameId.takeIf { it >= 0 }, launchMode.name, "hardcore cache (valid=$isValid)", hardcoreSave.id, hardcoreSave.channelName, bytes, getSramFile().absolutePath)
                     }
                     RestoreResult(bytes)
                 } else {
@@ -276,6 +279,7 @@ class SaveStateManager(
             if (bytes != null) {
                 getSramFile().writeBytes(bytes)
                 Log.d(TAG, "RESUME: Restored save (${bytes.size} bytes, hardcore=${targetSave.isHardcore})")
+                com.nendo.argosy.util.SaveDebugLogger.logBuiltinSramRestore(gameId.takeIf { it >= 0 }, "RESUME", if (activeSave != null) "active cache" else "most recent cache (no active)", targetSave.id, targetSave.channelName, bytes, getSramFile().absolutePath)
             }
             return RestoreResult(bytes, switchToHardcore)
         } else {
@@ -287,6 +291,7 @@ class SaveStateManager(
                     "file=${f.absolutePath} exists=${f.exists()} bytes=${bytes?.size ?: -1} " +
                     "nonZero=${bytes?.count { it != 0.toByte() } ?: -1}"
             )
+            com.nendo.argosy.util.SaveDebugLogger.logBuiltinSramRestore(gameId.takeIf { it >= 0 }, "RESUME", "on-disk .srm (no cached save)", null, channelName, bytes, f.absolutePath)
             return RestoreResult(bytes)
         }
     }
@@ -332,6 +337,7 @@ class SaveStateManager(
             }
             target.writeBytes(sramData)
             lastSramHash = currentHash
+            com.nendo.argosy.util.SaveDebugLogger.logBuiltinSramWrite(gameId.takeIf { it >= 0 }, channelName, target.absolutePath, sramData.size, currentHash)
             Log.i(
                 TAG,
                 "[SRAM] saveSram WROTE | ${sramData.size} bytes -> ${target.absolutePath} " +
@@ -412,6 +418,9 @@ class SaveStateManager(
             lastStateWriteRealtimeMs = android.os.SystemClock.elapsedRealtime()
             onLiveStateWritten?.invoke(slotNumber, stateFile)
             Log.d(TAG, "Saved state to slot $slotNumber (${stateData.size} bytes)")
+            if (com.nendo.argosy.util.SaveDebugLogger.isEnabled) {
+                com.nendo.argosy.util.SaveDebugLogger.logBuiltinSlotSave(gameId.takeIf { it >= 0 }, slotNumber, stateFile.absolutePath, stateData.size, com.nendo.argosy.util.SaveDebugLogger.bytesHash(stateData), screenshot != null)
+            }
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to save state to slot $slotNumber", e)
@@ -424,14 +433,18 @@ class SaveStateManager(
             val stateFile = getSlotFile(slotNumber)
             if (stateFile.exists()) {
                 val stateData = stateFile.readBytes()
+                val hash = if (com.nendo.argosy.util.SaveDebugLogger.isEnabled) com.nendo.argosy.util.SaveDebugLogger.bytesHash(stateData) else null
                 if (!retroView.unserializePersistedState(stateData)) {
                     Log.e(TAG, "Core rejected state from slot $slotNumber (${stateData.size} bytes)")
+                    com.nendo.argosy.util.SaveDebugLogger.logBuiltinSlotLoad(gameId.takeIf { it >= 0 }, slotNumber, stateFile.absolutePath, stateData.size, hash, "rejected by core")
                     return false
                 }
                 Log.d(TAG, "Loaded state from slot $slotNumber (${stateData.size} bytes)")
+                com.nendo.argosy.util.SaveDebugLogger.logBuiltinSlotLoad(gameId.takeIf { it >= 0 }, slotNumber, stateFile.absolutePath, stateData.size, hash, "loaded")
                 true
             } else {
                 Log.w(TAG, "No state file for slot $slotNumber")
+                com.nendo.argosy.util.SaveDebugLogger.logBuiltinSlotLoad(gameId.takeIf { it >= 0 }, slotNumber, stateFile.absolutePath, 0, null, "no file")
                 false
             }
         } catch (e: Exception) {

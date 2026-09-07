@@ -35,6 +35,11 @@ class RestoreCachedSaveUseCase @Inject constructor(
 ) {
     private val TAG = "RestoreCachedSaveUseCase"
 
+    private fun fail(gameId: Long, channel: String?, reason: RestoreCachedSaveFailureReason): Result.Error {
+        com.nendo.argosy.util.SaveDebugLogger.logRestoreSaveFailed(gameId, channel, reason::class.simpleName ?: reason.toString())
+        return Result.Error(reason)
+    }
+
     sealed class Result {
         data object Restored : Result()
         data object RestoredAndSynced : Result()
@@ -48,10 +53,10 @@ class RestoreCachedSaveUseCase @Inject constructor(
         syncToServer: Boolean
     ): Result {
         val game = gameDao.getById(gameId)
-            ?: return Result.Error(RestoreCachedSaveFailureReason.GameNotFound)
+            ?: return fail(gameId, entry.channelName, RestoreCachedSaveFailureReason.GameNotFound)
         if (game.localPath == null) {
             Log.d(TAG, "Skipping restore: game $gameId has no local ROM")
-            return Result.Error(RestoreCachedSaveFailureReason.NoLocalCopy)
+            return fail(gameId, entry.channelName, RestoreCachedSaveFailureReason.NoLocalCopy)
         }
 
         val emulatorPackage = emulatorResolver.getEmulatorPackageForGame(gameId, game.platformId, game.platformSlug)
@@ -69,7 +74,7 @@ class RestoreCachedSaveUseCase @Inject constructor(
         ) ?: saveSyncRepository.constructSavePath(
             emulatorId, game.title, game.platformSlug, game.localPath, coreName, game.saveId ?: game.titleId, gameId,
             folderShaped = entry.serverFileName?.endsWith(".zip", ignoreCase = true)
-        ) ?: return Result.Error(RestoreCachedSaveFailureReason.SaveLocationUnresolved)
+        ) ?: return fail(gameId, entry.channelName, RestoreCachedSaveFailureReason.SaveLocationUnresolved)
 
         val archiveRoots = when (entry.source) {
             UnifiedSaveEntry.Source.LOCAL,
@@ -80,8 +85,13 @@ class RestoreCachedSaveUseCase @Inject constructor(
         // this restore actually CHANGED the content, versus re-landing the same bytes that are
         // already active (a no-op that must not go nuking the built-in core's own resume state).
         val previousHash = saveCacheManager.calculateLocalSaveHash(targetPath)
+        com.nendo.argosy.util.SaveDebugLogger.logRestoreSaveBegin(
+            gameId = gameId, channel = entry.channelName, source = entry.source.name,
+            cacheId = entry.localCacheId, serverSaveId = entry.serverSaveId, emulatorId = emulatorId,
+            targetPath = targetPath, previousHash = previousHash
+        )
         if (!saveSyncRepository.clearSavesBeforeRestore(targetPath, game.platformSlug, game.saveId ?: game.titleId, archiveRoots)) {
-            return Result.Error(RestoreCachedSaveFailureReason.ClearExistingSaveFailed)
+            return fail(gameId, entry.channelName, RestoreCachedSaveFailureReason.ClearExistingSaveFailed)
         }
 
         var cachedHash: String? = null
@@ -89,13 +99,13 @@ class RestoreCachedSaveUseCase @Inject constructor(
             UnifiedSaveEntry.Source.LOCAL,
             UnifiedSaveEntry.Source.BOTH -> {
                 val cacheId = entry.localCacheId
-                    ?: return Result.Error(RestoreCachedSaveFailureReason.NoLocalCacheId)
+                    ?: return fail(gameId, entry.channelName, RestoreCachedSaveFailureReason.NoLocalCacheId)
                 cachedHash = saveCacheManager.getCacheById(cacheId)?.contentHash
                 saveCacheManager.restoreSave(cacheId, targetPath)
             }
             UnifiedSaveEntry.Source.SERVER -> {
                 val serverSaveId = entry.serverSaveId
-                    ?: return Result.Error(RestoreCachedSaveFailureReason.NoServerSaveId)
+                    ?: return fail(gameId, entry.channelName, RestoreCachedSaveFailureReason.NoServerSaveId)
                 val downloaded = saveSyncRepository.downloadSaveById(
                     serverSaveId = serverSaveId,
                     targetPath = targetPath,
@@ -123,7 +133,7 @@ class RestoreCachedSaveUseCase @Inject constructor(
         }
 
         if (!restoreSuccess) {
-            return Result.Error(RestoreCachedSaveFailureReason.RestoreFailed)
+            return fail(gameId, entry.channelName, RestoreCachedSaveFailureReason.RestoreFailed)
         }
 
         val restoredContentHash = when (entry.source) {
@@ -138,10 +148,21 @@ class RestoreCachedSaveUseCase @Inject constructor(
         // time check). Skipped when the hash could not be read on either side: silence must not read
         // as "definitely different" and wipe a resume state a plain no-op restore should have left
         // alone.
-        if (emulatorId == "builtin" &&
-            preferencesRepository.userPreferences.first().protectAgainstStaleResume &&
+        val guardOn = preferencesRepository.userPreferences.first().protectAgainstStaleResume
+        val guardFires = emulatorId == "builtin" && guardOn &&
             previousHash != null && restoredContentHash != null && previousHash != restoredContentHash
-        ) {
+        com.nendo.argosy.util.SaveDebugLogger.logResumeStateGuard(
+            gameId = gameId, emulatorId = emulatorId, trigger = "manual restore",
+            previousHash = previousHash, newHash = restoredContentHash,
+            decision = when {
+                emulatorId != "builtin" -> "skip: not the built-in core"
+                !guardOn -> "skip: protectAgainstStaleResume off"
+                previousHash == null || restoredContentHash == null -> "skip: a hash is unknown"
+                previousHash == restoredContentHash -> "skip: same content"
+                else -> "delete auto/resume states"
+            }
+        )
+        if (guardFires) {
             stateCacheManager.deleteAutoResumeStatesFromDisk(
                 emulatorId = emulatorId,
                 romPath = game.localPath,
@@ -160,6 +181,11 @@ class RestoreCachedSaveUseCase @Inject constructor(
         } else {
             activeSaveRepository.activateChannel(gameId, entry.channelName)
         }
+        com.nendo.argosy.util.SaveDebugLogger.logRestoreSaveDone(
+            gameId = gameId, channel = entry.channelName, targetPath = targetPath,
+            restoredHash = restoredContentHash, previousHash = previousHash,
+            activated = if (restoredCacheId != null) "cacheId=$restoredCacheId" else "channel=${entry.channelName ?: "autosave"}"
+        )
 
         if (game.rommId != null) {
             saveSyncRepository.markRestored(

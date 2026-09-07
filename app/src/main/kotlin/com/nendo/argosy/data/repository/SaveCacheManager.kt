@@ -490,6 +490,11 @@ class SaveCacheManager @Inject constructor(
                 cacheId = cacheId,
                 targetPath = targetPath
             )
+            SaveDebugLogger.logCustom(
+                event = "CACHE_RESTORE_FILES", gameId = entity.gameId, gameName = null, channel = entity.channelName,
+                details = "cacheId=$cacheId, from=${SaveDebugLogger.describeFile(cacheFile.absolutePath)}" +
+                    ", to=${SaveDebugLogger.describeFile(targetPath)}, cachedHash=${entity.contentHash ?: "null"}"
+            )
 
             try {
                 val game = gameDao.getById(entity.gameId)
