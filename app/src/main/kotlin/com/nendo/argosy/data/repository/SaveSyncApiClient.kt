@@ -586,6 +586,16 @@ class SaveSyncApiClient @Inject constructor(
         fun namedChannelOrNull(channelName: String?): String? =
             channelName?.takeUnless { isAutosaveChannel(it) }
 
+        /**
+         * Whether two channel coordinates name the SAME save line -- autosave/null on both sides
+         * match regardless of spelling (see [isAutosaveChannel]), a named channel matches only its
+         * own exact name. Mehdi, 2026-09-08: the built-in core keeps one physical save file per
+         * game; only the channel a device is actually ON may write it, so every automatic download
+         * loop that used to touch every channel's row now asks this first.
+         */
+        fun channelsMatch(a: String?, b: String?): Boolean =
+            if (isAutosaveChannel(a)) isAutosaveChannel(b) else a == b
+
         fun computeUploadFileName(localSavePath: String?, channelName: String?, romBaseName: String?): String {
             val baseName = when {
                 isAutosaveChannel(channelName) -> romBaseName ?: DEFAULT_SAVE_NAME

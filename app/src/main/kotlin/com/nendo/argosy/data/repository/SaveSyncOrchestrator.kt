@@ -352,7 +352,24 @@ class SaveSyncOrchestrator @Inject constructor(
             return@withContext 0
         }
 
-        for ((entity, game) in actionable) {
+        // Mehdi, 2026-09-08 ("il devrait syncro que cette branche et ignorer le reste"): the
+        // built-in core has ONE physical save file per game, regardless of how many channels its
+        // history tracks. A pending row for a channel the device is not currently on must never
+        // touch that file -- two channels racing to write it is exactly how a live session's save
+        // got clobbered by a stale autosave pull tonight. Only the row matching the game's actual
+        // active channel goes to disk; everything else is folded into the cache alone (the same
+        // path PrefetchGameSaveDataUseCase already uses), so GetUnifiedSavesUseCase can already see
+        // it and a later switch to that channel (SaveChannelSavesDelegate.activateSlot) restores it
+        // from the LOCAL copy instead of a fresh fetch -- unconditionally, even if its timestamp is
+        // technically older than whatever is on disk right now: switching channel is the user
+        // choosing that line, not a race the clock should referee.
+        val activeChannelByGame = actionable.map { it.first.gameId }.distinct()
+            .associateWith { activeSaveRepository.getActiveChannel(it) }
+        val (liveItems, cacheOnlyItems) = actionable.partition { (entity, _) ->
+            SaveSyncApiClient.channelsMatch(entity.channelName, activeChannelByGame[entity.gameId])
+        }
+
+        for ((entity, game) in liveItems) {
             syncQueueManager.addOperation(
                 SyncOperation(
                     gameId = entity.gameId,
@@ -367,7 +384,7 @@ class SaveSyncOrchestrator @Inject constructor(
         var downloaded = 0
         val client = apiClient.get()
 
-        for ((syncEntity, _) in actionable) {
+        for ((syncEntity, _) in liveItems) {
             syncQueueManager.updateOperation(syncEntity.gameId) { it.copy(status = SyncStatus.IN_PROGRESS) }
 
             when (val result = client.downloadSave(syncEntity.gameId, syncEntity.emulatorId, syncEntity.channelName, knownServerSaveId = syncEntity.rommSaveId)) {
@@ -394,6 +411,20 @@ class SaveSyncOrchestrator @Inject constructor(
             }
         }
 
+        // Silent on purpose: nothing on screen changes for a channel nobody is on, so this never
+        // touches the sync queue UI -- only the cache, and only the bookkeeping row that says so.
+        for ((syncEntity, _) in cacheOnlyItems) {
+            val rommSaveId = syncEntity.rommSaveId
+            val cached = rommSaveId != null &&
+                client.downloadAndCacheSave(rommSaveId, syncEntity.gameId, syncEntity.channelName)
+            if (cached) {
+                saveSyncDao.upsert(syncEntity.copy(syncStatus = SaveSyncEntity.STATUS_SYNCED))
+                downloaded++
+            } else {
+                Logger.debug(TAG, "downloadPendingServerSaves: cache-only fetch failed for inactive channel gameId=${syncEntity.gameId} channel=${syncEntity.channelName}")
+            }
+        }
+
         downloaded
     }
 
@@ -416,6 +447,11 @@ class SaveSyncOrchestrator @Inject constructor(
             }
         } else emulatorId
 
+        // A freshly downloaded game has no channel selected yet, so getActiveChannel's own fallback
+        // (no cache row, no registry entry) resolves this to the autosave/default bucket -- exactly
+        // the one channel that should populate the live save on first install.
+        val activeChannel = activeSaveRepository.getActiveChannel(gameId)
+
         for (serverSave in serverSaves) {
             val channelName = SaveSyncApiClient.parseServerChannelNameForSync(serverSave.fileName, romBaseName)
             val serverTime = SaveSyncApiClient.parseTimestamp(serverSave.updatedAt)
@@ -426,30 +462,44 @@ class SaveSyncOrchestrator @Inject constructor(
                 saveSyncDao.getByGameEmulatorAndNullChannel(gameId, canonicalEmulatorId, ownerUserId)
             }
 
-            saveSyncDao.upsert(
-                SaveSyncEntity(
-                    id = existing?.id ?: 0,
-                    gameId = gameId,
-                    rommId = rommId,
-                    emulatorId = canonicalEmulatorId,
-                    channelName = channelName,
-                    rommSaveId = serverSave.id,
-                    localSavePath = existing?.localSavePath,
-                    localUpdatedAt = existing?.localUpdatedAt,
-                    serverUpdatedAt = serverTime,
-                    lastSyncedAt = existing?.lastSyncedAt,
-                    syncStatus = SaveSyncEntity.STATUS_SERVER_NEWER,
-                    lastUploadedHash = existing?.lastUploadedHash,
-                    localContentHash = existing?.localContentHash,
-                    lastSyncDeviceId = existing?.lastSyncDeviceId,
-                    lastSyncDeviceName = existing?.lastSyncDeviceName,
-                    ownerUserId = existing?.ownerUserId ?: ownerUserId
-                )
+            val entity = SaveSyncEntity(
+                id = existing?.id ?: 0,
+                gameId = gameId,
+                rommId = rommId,
+                emulatorId = canonicalEmulatorId,
+                channelName = channelName,
+                rommSaveId = serverSave.id,
+                localSavePath = existing?.localSavePath,
+                localUpdatedAt = existing?.localUpdatedAt,
+                serverUpdatedAt = serverTime,
+                lastSyncedAt = existing?.lastSyncedAt,
+                syncStatus = SaveSyncEntity.STATUS_SERVER_NEWER,
+                lastUploadedHash = existing?.lastUploadedHash,
+                localContentHash = existing?.localContentHash,
+                lastSyncDeviceId = existing?.lastSyncDeviceId,
+                lastSyncDeviceName = existing?.lastSyncDeviceName,
+                ownerUserId = existing?.ownerUserId ?: ownerUserId
             )
+            // REPLACE keeps the id it was given (existing.id) or hands back the freshly generated
+            // one, either way the row's real id -- so the entity can be re-saved below without a
+            // second read.
+            val rowId = saveSyncDao.upsert(entity)
 
-            val result = client.downloadSave(gameId, canonicalEmulatorId, channelName, skipBackup = false, knownServerSaveId = serverSave.id)
-            if (result is SaveSyncResult.Error) {
-                Logger.error(TAG, "syncSavesForNewDownload: failed '${serverSave.fileName}': ${result.message}")
+            // Same rule as downloadPendingServerSaves: only the active channel may land on the one
+            // physical save file. Every other channel this fresh install happens to have on the
+            // server goes into the cache alone, ready the moment the user ever switches to it.
+            if (SaveSyncApiClient.channelsMatch(channelName, activeChannel)) {
+                val result = client.downloadSave(gameId, canonicalEmulatorId, channelName, skipBackup = false, knownServerSaveId = serverSave.id)
+                if (result is SaveSyncResult.Error) {
+                    Logger.error(TAG, "syncSavesForNewDownload: failed '${serverSave.fileName}': ${result.message}")
+                }
+            } else {
+                val cached = client.downloadAndCacheSave(serverSave.id, gameId, channelName)
+                if (cached) {
+                    saveSyncDao.upsert(entity.copy(id = rowId, syncStatus = SaveSyncEntity.STATUS_SYNCED))
+                } else {
+                    Logger.debug(TAG, "syncSavesForNewDownload: cache-only fetch failed for inactive channel '$channelName', gameId=$gameId")
+                }
             }
         }
     }
@@ -473,8 +523,6 @@ class SaveSyncOrchestrator @Inject constructor(
             val serverSaves = client.checkSavesForGame(game.id, rommId)
             if (serverSaves.isEmpty()) continue
             inspected++
-
-            val firstTimeForGame = heldHashByRow.isEmpty()
 
             val latestPerChannel = serverSaves
                 .filter { !SaveSyncApiClient.isStateShapedSave(it) }
@@ -506,12 +554,12 @@ class SaveSyncOrchestrator @Inject constructor(
                     }
                 }
 
-                val isActiveChannel = channelName == null ||
-                    channelName.equals(SaveSyncApiClient.AUTOSAVE_SLOT_NAME, ignoreCase = true) ||
-                    channelName.equals(SaveSyncApiClient.DEFAULT_SAVE_NAME, ignoreCase = true)
-                val shouldDownload = firstTimeForGame || isActiveChannel
-                val status = if (shouldDownload) SaveSyncEntity.STATUS_SERVER_NEWER else SaveSyncEntity.STATUS_SYNCED
-
+                // Whether this channel's row actually goes to disk or only to the cache is
+                // downloadPendingServerSaves' call (it knows the game's TRUE active channel, which
+                // can be a named branch, not just "no channel / autosave" as this used to assume --
+                // marking every changed channel SERVER_NEWER here and letting that pass sort live
+                // vs. cache-only is what makes an active NAMED channel's own updates actually
+                // reach the disk instead of being silently marked SYNCED and skipped forever.
                 saveSyncDao.upsert(
                     SaveSyncEntity(
                         id = existing?.id ?: 0,
@@ -524,7 +572,7 @@ class SaveSyncOrchestrator @Inject constructor(
                         localUpdatedAt = existing?.localUpdatedAt,
                         serverUpdatedAt = serverTime,
                         lastSyncedAt = existing?.lastSyncedAt,
-                        syncStatus = status,
+                        syncStatus = SaveSyncEntity.STATUS_SERVER_NEWER,
                         lastUploadedHash = existing?.lastUploadedHash,
                         localContentHash = existing?.localContentHash,
                         lastSyncDeviceId = existing?.lastSyncDeviceId,
@@ -532,7 +580,7 @@ class SaveSyncOrchestrator @Inject constructor(
                         ownerUserId = existing?.ownerUserId ?: ownerUserId
                     )
                 )
-                if (shouldDownload) queued++
+                queued++
             }
         }
         val downloaded = downloadPendingServerSaves()
