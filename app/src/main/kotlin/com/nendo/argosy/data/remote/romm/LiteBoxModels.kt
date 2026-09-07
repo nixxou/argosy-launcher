@@ -24,7 +24,10 @@ data class LiteBoxVersion(
     val fileName: String = "",
     val size: Long = 0L,
     val isPinned: Boolean = false,
-    val mayHaveRoms: Boolean = false
+    val mayHaveRoms: Boolean = false,
+    /** Set when this top-level candidate is itself a file inside the game's archive: pinning it
+     * needs this path, and there is nothing to drill into. */
+    val path: String = ""
 )
 
 /** One file inside a single version's own archive. [path] is the archive-relative entry path, opaque
