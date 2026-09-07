@@ -197,7 +197,9 @@ class GetUnifiedSavesUseCase @Inject constructor(
                         isRollback = cache.isRollback,
                         isUserCreatedSlot = !localIsArchival && cache.isLocked,
                         isCurrent = deviceSyncCurrent ?: false,
-                        isArchival = localIsArchival
+                        isArchival = localIsArchival,
+                        contentHash = cache.contentHash ?: matchingServer.contentHash,
+                        liteboxLabel = matchingServer.liteboxLabel
                     )
                 )
             } else {
@@ -214,7 +216,8 @@ class GetUnifiedSavesUseCase @Inject constructor(
                         cheatsUsed = cache.cheatsUsed,
                         isRollback = cache.isRollback,
                         isUserCreatedSlot = !localIsArchival && cache.isLocked,
-                        isArchival = localIsArchival
+                        isArchival = localIsArchival,
+                        contentHash = cache.contentHash
                     )
                 )
             }
@@ -244,7 +247,9 @@ class GetUnifiedSavesUseCase @Inject constructor(
                         isLocked = false,
                         isUserCreatedSlot = false,
                         isCurrent = deviceSyncCurrent ?: false,
-                        isArchival = true
+                        isArchival = true,
+                        contentHash = serverSave.contentHash,
+                        liteboxLabel = serverSave.liteboxLabel
                     )
                 )
                 continue
@@ -269,7 +274,9 @@ class GetUnifiedSavesUseCase @Inject constructor(
                     isLatest = isLatest,
                     isLocked = isLocked,
                     isUserCreatedSlot = true,
-                    isCurrent = deviceSyncCurrent ?: false
+                    isCurrent = deviceSyncCurrent ?: false,
+                    contentHash = serverSave.contentHash,
+                    liteboxLabel = serverSave.liteboxLabel
                 )
             )
         }

@@ -47,6 +47,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -662,7 +663,8 @@ private fun HistoryRow(
                 ) else Modifier
             )
             .clickableNoFocus(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            // Taller rows on a LiteBox server: two more lines (label, hash) under the date.
+            .padding(horizontal = 12.dp, vertical = if (item.liteBoxDetails) 12.dp else 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -695,9 +697,25 @@ private fun HistoryRow(
                     )
                 }
             }
+            // LiteBox server only (Mehdi, 2026-09-08): the desktop's own words for this save, then
+            // size and content md5 on one line - what tells two same-minute saves apart.
+            if (item.liteBoxDetails && !item.liteboxLabel.isNullOrBlank()) {
+                Text(
+                    text = item.liteboxLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
             Text(
-                text = formatSaveSize(item.size),
+                text = if (item.liteBoxDetails && item.contentHash != null) {
+                    formatSaveSize(item.size) + "  md5 " + item.contentHash.take(16)
+                } else {
+                    formatSaveSize(item.size)
+                },
                 style = MaterialTheme.typography.labelSmall,
+                fontFamily = if (item.liteBoxDetails && item.contentHash != null) FontFamily.Monospace else null,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }

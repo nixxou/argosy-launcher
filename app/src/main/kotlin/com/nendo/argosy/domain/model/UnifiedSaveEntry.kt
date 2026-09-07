@@ -19,7 +19,11 @@ data class UnifiedSaveEntry(
     val isRollback: Boolean = false,
     val isUserCreatedSlot: Boolean = false,
     val isCurrent: Boolean = false,
-    val isArchival: Boolean = false
+    val isArchival: Boolean = false,
+    // The content's md5 (local cache first, else the server's content_hash); shown under the date on a LiteBox server.
+    val contentHash: String? = null,
+    // LiteBox only: the desktop's own description of this save (group, chip, copy title, live/copy).
+    val liteboxLabel: String? = null
 ) {
     enum class Source { LOCAL, SERVER, BOTH }
 

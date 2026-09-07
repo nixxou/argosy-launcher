@@ -167,6 +167,8 @@ class SaveChannelSavesDelegate @Inject constructor(
     }
 
     fun updateHistoryForFocusedSlot() {
+        // A LiteBox server labels its saves; a stock RomM never does, and then no row shows details.
+        val liteBoxServer = holder.rawEntries.any { it.liteboxLabel != null }
         val state = _state.value
         val slot = state.saveSlots.getOrNull(state.selectedSlotIndex)
         if (slot == null || slot.isCreateAction) {
@@ -204,7 +206,10 @@ class SaveChannelSavesDelegate @Inject constructor(
                 isLatest = i == 0,
                 isHardcore = entry.isHardcore,
                 isRollback = entry.isRollback,
-                isArchival = entry.isArchival
+                isArchival = entry.isArchival,
+                liteboxLabel = entry.liteboxLabel,
+                contentHash = entry.contentHash,
+                liteBoxDetails = liteBoxServer
             )
         }
 
