@@ -356,6 +356,12 @@
     <string name="settings_ra_login_submit_subtitle">Se connecter à RetroAchievements</string>
     <string name="settings_ra_login_cancel_title">Annuler</string>
     <string name="settings_ra_login_cancel_subtitle">Retour aux paramètres RetroAchievements</string>
+    <string name="settings_ra_login_litebox_title">Récupérer l\'identifiant depuis LiteBox</string>
+    <string name="settings_ra_login_litebox_subtitle">Approuvez la demande sur le bureau LiteBox</string>
+    <string name="settings_ra_login_litebox_waiting">En attente d\'approbation sur le bureau…</string>
+    <string name="settings_ra_login_litebox_denied">Refusé sur le bureau</string>
+    <string name="settings_ra_login_litebox_expired">La demande a expiré, réessayez</string>
+    <string name="settings_ra_login_litebox_unavailable">Ce serveur n\'a aucun identifiant RetroAchievements à partager</string>
 
     <!-- ===== Section BIOS ===== -->
 

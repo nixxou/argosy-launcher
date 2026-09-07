@@ -347,6 +347,12 @@
     <string name="settings_ra_login_submit_subtitle">RetroAchievements में साइन इन करें</string>
     <string name="settings_ra_login_cancel_title">रद्द करें</string>
     <string name="settings_ra_login_cancel_subtitle">RetroAchievements सेटिंग्स पर वापस जाएँ</string>
+    <string name="settings_ra_login_litebox_title">LiteBox से लॉगिन प्राप्त करें</string>
+    <string name="settings_ra_login_litebox_subtitle">LiteBox डेस्कटॉप पर अनुरोध स्वीकृत करें</string>
+    <string name="settings_ra_login_litebox_waiting">डेस्कटॉप पर स्वीकृति की प्रतीक्षा…</string>
+    <string name="settings_ra_login_litebox_denied">डेस्कटॉप पर अस्वीकृत</string>
+    <string name="settings_ra_login_litebox_expired">अनुरोध समाप्त हो गया, फिर से प्रयास करें</string>
+    <string name="settings_ra_login_litebox_unavailable">इस सर्वर पर साझा करने के लिए RetroAchievements लॉगिन नहीं है</string>
 
     <!-- ===== BIOS section ===== -->
 

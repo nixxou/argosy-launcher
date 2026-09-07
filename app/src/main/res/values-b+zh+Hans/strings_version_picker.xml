@@ -5,4 +5,7 @@
     <string name="version_picker_footer_select">选择</string>
     <string name="version_picker_footer_back">返回</string>
     <string name="version_picker_footer_back_to_versions">返回版本列表</string>
+    <string name="version_picker_roms_from">%1$s 内的 ROM</string>
+    <string name="version_picker_rom_count">%1$d 个 ROM</string>
+    <string name="version_picker_score">%1$d 分</string>
 </resources>

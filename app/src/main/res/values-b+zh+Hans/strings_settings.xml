@@ -338,6 +338,12 @@
     <string name="settings_ra_login_submit_subtitle">登录RetroAchievements</string>
     <string name="settings_ra_login_cancel_title">取消</string>
     <string name="settings_ra_login_cancel_subtitle">返回RetroAchievements设置</string>
+    <string name="settings_ra_login_litebox_title">从 LiteBox 获取登录</string>
+    <string name="settings_ra_login_litebox_subtitle">在 LiteBox 桌面上批准请求</string>
+    <string name="settings_ra_login_litebox_waiting">等待桌面批准…</string>
+    <string name="settings_ra_login_litebox_denied">已在桌面拒绝</string>
+    <string name="settings_ra_login_litebox_expired">请求已过期，请重试</string>
+    <string name="settings_ra_login_litebox_unavailable">此服务器没有可共享的 RetroAchievements 登录</string>
 
     <!-- ===== BIOS section ===== -->
 

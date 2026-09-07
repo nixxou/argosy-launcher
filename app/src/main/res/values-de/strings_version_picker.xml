@@ -5,4 +5,7 @@
     <string name="version_picker_footer_select">Auswählen</string>
     <string name="version_picker_footer_back">Zurück</string>
     <string name="version_picker_footer_back_to_versions">Zurück zu den Versionen</string>
+    <string name="version_picker_roms_from">Roms in %1$s</string>
+    <string name="version_picker_rom_count">%1$d Roms</string>
+    <string name="version_picker_score">%1$d Pkt.</string>
 </resources>

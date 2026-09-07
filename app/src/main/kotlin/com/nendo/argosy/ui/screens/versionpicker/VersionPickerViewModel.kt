@@ -24,9 +24,19 @@ private const val TAG = "VersionPickerViewModel"
  * thousands of choices here, which is exactly why this is a real screen (its own LazyColumn, its
  * own InputHandler subscription) rather than one more of Game Detail's small in-place pickers.
  *
- * Drilling into a version and pinning both go through RomMRepository's liteBox* calls, which are
- * themselves thin wrappers over RommLiteBoxApi.cs — see that file's own header for why an official
- * RomM server never reaches any of this (the feature simply is not there for it).
+ * Two screens, both fed by the server's own eligibility (Mehdi, 2026-09-07: "l'éligibilité doit
+ * coller avec celle de génération des romm_id"):
+ *  1. the versions — the game's own file and its alternatives. A tap on a version served whole pins
+ *     it; a tap on an ELIGIBLE one (an archive the extractor takes apart for this platform/emulator)
+ *     opens screen 2 instead, because only its roms carry a rom_id;
+ *  2. the roms inside that one archive. A tap pins the rom.
+ * A game with a single version that is eligible opens straight on screen 2 (there is nothing to
+ * choose on screen 1), and B then leaves the picker. Otherwise B goes back one screen at a time and
+ * leaves from screen 1 — always without pinning anything.
+ *
+ * Drilling in and pinning go through RomMRepository's liteBox* calls, thin wrappers over
+ * RommLiteBoxApi.cs — see that file's own header for why an official RomM server never reaches any
+ * of this (the feature simply is not there for it).
  */
 @HiltViewModel
 class VersionPickerViewModel @Inject constructor(
@@ -59,9 +69,20 @@ class VersionPickerViewModel @Inject constructor(
 
             when (val result = romMRepository.liteBoxListVersions(game.rommId)) {
                 is RomMResult.Success -> {
-                    topLevelRows = result.data.map { it.toRow() }
-                    _uiState.update {
-                        it.copy(isLoading = false, rows = topLevelRows, focusIndex = 0, drilledIntoLabel = null)
+                    topLevelRows = withLocalFlags(result.data.map { it.toRow() })
+                    val lone = topLevelRows.singleOrNull()
+                    if (lone != null && lone.isDrillable) {
+                        // One version and it is an archive to pick from: screen 1 would be a single
+                        // line the user has to tap for no reason — open its roms directly.
+                        drillInto(lone, hasVersionListBehind = false)
+                    } else {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false, rows = topLevelRows,
+                                focusIndex = topLevelRows.indexOfFirst { r -> r.isCurrent }.coerceAtLeast(0),
+                                drilledIntoLabel = null, archiveFileName = null, hasVersionListBehind = false
+                            )
+                        }
                     }
                 }
                 is RomMResult.Error -> {
@@ -70,6 +91,15 @@ class VersionPickerViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /** Marks the rows whose rom_id this device already holds a downloaded file for — the local row
+     * for that id, when it exists and has a file. Rows without a rom_id yet (never pinned by anyone)
+     * cannot be local: nothing was ever served under them. */
+    private suspend fun withLocalFlags(rows: List<VersionPickerRow>): List<VersionPickerRow> = rows.map { row ->
+        val id = row.romId ?: return@map row
+        val local = gameDao.getByRommId(id)?.localPath != null
+        if (local) row.copy(isLocal = true) else row
     }
 
     private fun moveFocus(delta: Int): Boolean {
@@ -81,7 +111,7 @@ class VersionPickerViewModel @Inject constructor(
         return true
     }
 
-    private fun drillInto(row: VersionPickerRow) {
+    private fun drillInto(row: VersionPickerRow, hasVersionListBehind: Boolean = true) {
         if (_uiState.value.isApplying) return
         // Checked BEFORE the spinner goes up: bailing out after it would leave it up for good.
         val id = rommId ?: return
@@ -89,26 +119,38 @@ class VersionPickerViewModel @Inject constructor(
             _uiState.update { it.copy(isApplying = true) }
             when (val result = romMRepository.liteBoxListRomsInVersion(id, row.appId)) {
                 is RomMResult.Success -> {
+                    val roms = withLocalFlags(result.data.roms.map { entry -> entry.toRow(row.appId) })
                     _uiState.update {
                         it.copy(
+                            isLoading = false,
                             isApplying = false,
-                            drilledIntoLabel = row.label,
-                            rows = result.data.map { entry -> entry.toRow(row.appId) },
-                            focusIndex = 0
+                            drilledIntoLabel = result.data.versionLabel.ifBlank { row.label },
+                            archiveFileName = result.data.archiveFileName.takeIf { name -> name.isNotBlank() },
+                            hasVersionListBehind = hasVersionListBehind,
+                            rows = roms,
+                            // Land on what this device is served today, when it is in there.
+                            focusIndex = roms.indexOfFirst { r -> r.isCurrent }.coerceAtLeast(0)
                         )
                     }
                 }
                 is RomMResult.Error -> {
                     Logger.warn(TAG, "listRomsInVersion failed: ${result.message}")
-                    _uiState.update { it.copy(isApplying = false, error = result.message) }
+                    _uiState.update { it.copy(isLoading = false, isApplying = false, error = result.message) }
                 }
             }
         }
     }
 
+    /** One screen back. False when there is no screen behind this one — the caller then leaves. */
     private fun backOutOfDrillDown(): Boolean {
-        if (_uiState.value.drilledIntoLabel == null) return false
-        _uiState.update { it.copy(rows = topLevelRows, drilledIntoLabel = null, focusIndex = 0) }
+        val state = _uiState.value
+        if (state.drilledIntoLabel == null || !state.hasVersionListBehind) return false
+        _uiState.update {
+            it.copy(
+                rows = topLevelRows, drilledIntoLabel = null, archiveFileName = null, hasVersionListBehind = false,
+                focusIndex = topLevelRows.indexOfFirst { r -> r.isCurrent }.coerceAtLeast(0)
+            )
+        }
         return true
     }
 
@@ -161,8 +203,8 @@ class VersionPickerViewModel @Inject constructor(
         }
     }
 
-    /** B backs out of a drilled-in version first; at the top level it leaves the screen through
-     * [onBack] explicitly — never relying on an UNHANDLED result reaching some other handler. */
+    /** B goes back one screen when there is one behind; otherwise it leaves through [onBack]
+     * explicitly — never relying on an UNHANDLED result reaching some other handler. */
     fun createInputHandler(onBack: () -> Unit, onSwitched: (Long) -> Unit): InputHandler = object : InputHandler {
         override fun onUp(): InputResult =
             if (moveFocus(-1)) InputResult.HANDLED else InputResult.handled(SoundType.BOUNDARY)

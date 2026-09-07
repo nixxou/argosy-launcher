@@ -1914,7 +1914,13 @@ class GameDetailViewModel @Inject constructor(
             _uiState.update { state ->
                 // The user may have moved to the next game while this was in flight.
                 if (state.game?.id != game.id) state
-                else state.copy(hasLiteBoxVersions = versions.size > 1, liteBoxVersionCount = versions.size)
+                else state.copy(
+                    // Worth an entry when there is something to choose: several versions, or a
+                    // single eligible archive whose roms are the choice (the picker then opens
+                    // straight on them). One version served whole has nothing to switch to.
+                    hasLiteBoxVersions = versions.size > 1 || versions.any { it.eligible },
+                    liteBoxVersionCount = versions.singleOrNull()?.takeIf { it.eligible }?.romCount ?: versions.size
+                )
             }
         }
     }

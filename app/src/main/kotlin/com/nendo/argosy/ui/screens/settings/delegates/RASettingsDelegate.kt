@@ -7,6 +7,10 @@ import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.repository.RALoginResult
 import com.nendo.argosy.data.repository.RetroAchievementsRepository
 import com.nendo.argosy.data.repository.LibretroSettingsRepository
+import com.nendo.argosy.data.remote.romm.LiteBoxRaPoll
+import com.nendo.argosy.data.remote.romm.RomMRepository
+import com.nendo.argosy.data.remote.romm.RomMResult
+import kotlinx.coroutines.delay
 import com.nendo.argosy.ui.screens.settings.RASettingsState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +28,7 @@ class RASettingsDelegate @Inject constructor(
     private val raRepository: RetroAchievementsRepository,
     private val prefsRepository: UserPreferencesRepository,
     private val libretroSettingsRepo: LibretroSettingsRepository,
+    private val romMRepository: RomMRepository,
     @ApplicationContext private val context: Context
 ) {
     private val _state = MutableStateFlow(RASettingsState())
@@ -49,6 +54,12 @@ class RASettingsDelegate @Inject constructor(
                     defaultToHardcore = builtinPrefs.defaultToHardcore
                 )
             }
+        }
+
+        scope.launch {
+            // LiteBox only, one cached probe: a stock RomM (or offline) simply never shows the button.
+            val available = runCatching { romMRepository.liteBoxSupportsRaCredentials() }.getOrDefault(false)
+            _state.update { it.copy(liteBoxSyncAvailable = available) }
         }
 
         scope.launch {
@@ -143,6 +154,68 @@ class RASettingsDelegate @Inject constructor(
                 is RALoginResult.Error -> {
                     _state.update {
                         it.copy(isLoggingIn = false, loginError = result.message)
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Mehdi, 2026-09-07: "la touche pour synchro les identifiants RetroAchievements" - asks the LiteBox
+     * desktop for its own RetroAchievements login. A card goes up over there; this polls until a human
+     * shares or denies (or five minutes pass), then stores the username + connect token exactly as a
+     * password login would. Shaped like the device pairing on purpose - same words, same patience.
+     */
+    fun syncFromLiteBox(scope: CoroutineScope, onFocusReset: () -> Unit) {
+        if (_state.value.isLoggingIn) return
+        scope.launch {
+            _state.update {
+                it.copy(
+                    isLoggingIn = true, loginError = null,
+                    liteBoxSyncStatus = context.getString(R.string.settings_ra_login_litebox_waiting)
+                )
+            }
+            fun fail(message: String) {
+                _state.update { it.copy(isLoggingIn = false, liteBoxSyncStatus = null, loginError = message) }
+            }
+            val ticket = when (val r = romMRepository.liteBoxRequestRaCredentials()) {
+                is RomMResult.Success -> r.data
+                is RomMResult.Error -> {
+                    fail(
+                        if (r.code == 409) context.getString(R.string.settings_ra_login_litebox_unavailable)
+                        else r.message
+                    )
+                    return@launch
+                }
+            }
+            if (ticket.requestId.isBlank()) { fail(context.getString(R.string.settings_ra_login_litebox_expired)); return@launch }
+            val deadline = System.currentTimeMillis() + ticket.expiresIn * 1000L
+            val interval = ticket.interval.coerceAtLeast(2) * 1000L
+            while (true) {
+                delay(interval)
+                when (val poll = romMRepository.liteBoxPollRaCredentials(ticket.requestId)) {
+                    LiteBoxRaPoll.Pending -> if (System.currentTimeMillis() > deadline) {
+                        fail(context.getString(R.string.settings_ra_login_litebox_expired)); return@launch
+                    }
+                    LiteBoxRaPoll.Denied -> { fail(context.getString(R.string.settings_ra_login_litebox_denied)); return@launch }
+                    LiteBoxRaPoll.Expired -> { fail(context.getString(R.string.settings_ra_login_litebox_expired)); return@launch }
+                    is LiteBoxRaPoll.Failed -> { fail(poll.message); return@launch }
+                    is LiteBoxRaPoll.Ready -> {
+                        when (val result = raRepository.adoptCredentials(poll.credentials.username, poll.credentials.token)) {
+                            is RALoginResult.Success -> {
+                                Log.d(TAG, "RA login adopted from LiteBox for ${result.username}")
+                                _state.update {
+                                    it.copy(
+                                        isLoggingIn = false, isLoggedIn = true, username = result.username,
+                                        showLoginForm = false, loginUsername = "", loginPassword = "",
+                                        liteBoxSyncStatus = null
+                                    )
+                                }
+                                onFocusReset()
+                            }
+                            is RALoginResult.Error -> fail(result.message)
+                        }
+                        return@launch
                     }
                 }
             }

@@ -357,6 +357,12 @@
     <string name="settings_ra_login_submit_subtitle">Bei RetroAchievements anmelden</string>
     <string name="settings_ra_login_cancel_title">Abbrechen</string>
     <string name="settings_ra_login_cancel_subtitle">Zurück zu den RetroAchievements-Einstellungen</string>
+    <string name="settings_ra_login_litebox_title">Anmeldung von LiteBox holen</string>
+    <string name="settings_ra_login_litebox_subtitle">Anfrage auf dem LiteBox-Desktop bestätigen</string>
+    <string name="settings_ra_login_litebox_waiting">Warten auf Bestätigung am Desktop…</string>
+    <string name="settings_ra_login_litebox_denied">Am Desktop abgelehnt</string>
+    <string name="settings_ra_login_litebox_expired">Die Anfrage ist abgelaufen, bitte erneut versuchen</string>
+    <string name="settings_ra_login_litebox_unavailable">Dieser Server hat keine RetroAchievements-Anmeldung zum Teilen</string>
 
     <!-- ===== BIOS section ===== -->
 

@@ -197,10 +197,13 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
         SettingsSection.RETRO_ACHIEVEMENTS -> {
             val ra = state.retroAchievements
             if (ra.showLoginForm) {
+                // With the LiteBox button the rows are: user, password, LiteBox, login, cancel.
+                val shift = if (ra.liteBoxSyncAvailable) 1 else 0
                 when (state.focusedIndex) {
                     0, 1 -> vm.raDelegate.setFocusField(state.focusedIndex)
-                    2 -> vm.loginToRA()
-                    3 -> vm.hideRALoginForm()
+                    2 -> if (ra.liteBoxSyncAvailable) vm.syncRAFromLiteBox() else vm.loginToRA()
+                    2 + shift -> vm.loginToRA()
+                    3 + shift -> vm.hideRALoginForm()
                 }
             } else {
                 if (ra.isLoggedIn) {
@@ -1218,7 +1221,7 @@ private fun computeMaxFocusIndex(
         else -> jellyfinMaxFocusIndex(JellyfinLayoutState.from(state))
     }
     SettingsSection.RETRO_ACHIEVEMENTS -> when {
-        state.retroAchievements.showLoginForm -> 3
+        state.retroAchievements.showLoginForm -> if (state.retroAchievements.liteBoxSyncAvailable) 4 else 3
         state.retroAchievements.isLoggedIn -> {
             val lastBeforePush = if (state.retroAchievements.proxyEnabled) 3 else 2
             if (state.retroAchievements.canPushToRetroArch) lastBeforePush + 1 else lastBeforePush

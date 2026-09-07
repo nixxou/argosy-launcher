@@ -241,7 +241,7 @@ class RomMRepository @Inject constructor(
     /** See RomMLibrarySyncService.hideSiblingVersions - the open-time hide of a game's other versions. */
     suspend fun liteBoxHideSiblingVersions(gameId: Long): String? = librarySyncService.hideSiblingVersions(gameId)
 
-    suspend fun liteBoxListRomsInVersion(romId: Long, appId: String?): RomMResult<List<LiteBoxRomEntry>> =
+    suspend fun liteBoxListRomsInVersion(romId: Long, appId: String?): RomMResult<LiteBoxRomsInVersion> =
         liteBoxService.listRomsInVersion(romId, appId)
 
     suspend fun liteBoxPinVersion(romId: Long, appId: String?, path: String?): RomMResult<LiteBoxPinResponse> =
@@ -249,4 +249,16 @@ class RomMRepository @Inject constructor(
 
     suspend fun liteBoxUnpinVersion(romId: Long): RomMResult<LiteBoxPinResponse> =
         liteBoxService.unpinVersion(romId)
+
+    /** True only against a LiteBox that holds a RetroAchievements login to share (probes once). */
+    suspend fun liteBoxSupportsRaCredentials(): Boolean {
+        liteBoxService.capabilities()
+        return liteBoxService.supportsRaCredentials()
+    }
+
+    suspend fun liteBoxRequestRaCredentials(): RomMResult<LiteBoxRaRequestResponse> =
+        liteBoxService.requestRaCredentials()
+
+    suspend fun liteBoxPollRaCredentials(requestId: String): LiteBoxRaPoll =
+        liteBoxService.pollRaCredentials(requestId)
 }

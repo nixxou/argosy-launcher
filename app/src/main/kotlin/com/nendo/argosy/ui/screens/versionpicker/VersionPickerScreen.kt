@@ -21,6 +21,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.DownloadDone
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -35,6 +39,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -55,7 +61,8 @@ import com.nendo.argosy.ui.util.clickableNoFocus
  * The full-page version/rom picker (Mehdi, 2026-09-06): "faut une grande page pour choisir la
  * version, me met pas une toute petite modale" — a game can offer thousands of choices here, so
  * this is a real navigation destination with its own LazyColumn, not one more of Game Detail's
- * small in-place pickers (disc/variant/memcard).
+ * small in-place pickers (disc/variant/memcard). Two screens — versions, then the roms inside one
+ * eligible archive — see VersionPickerViewModel for when each shows.
  */
 @Composable
 fun VersionPickerScreen(
@@ -85,7 +92,7 @@ fun VersionPickerScreen(
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
 
-    LaunchedEffect(uiState.focusIndex) {
+    LaunchedEffect(uiState.focusIndex, uiState.drilledIntoLabel) {
         if (uiState.rows.isNotEmpty()) listState.animateScrollToItem(uiState.focusIndex)
     }
 
@@ -100,6 +107,17 @@ fun VersionPickerScreen(
                     overflow = TextOverflow.Ellipsis
                 )
                 if (uiState.drilledIntoLabel != null) {
+                    // Which archive these roms come from, then the game — the version label alone
+                    // ("Rev A") says nothing about the file being opened.
+                    uiState.archiveFileName?.let { archive ->
+                        Text(
+                            text = stringResource(R.string.version_picker_roms_from, archive),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                     Text(
                         text = uiState.gameTitle,
                         style = MaterialTheme.typography.bodySmall,
@@ -157,7 +175,7 @@ fun VersionPickerScreen(
             hints = buildList {
                 add(InputButton.DPAD_VERTICAL to stringResource(R.string.version_picker_footer_navigate))
                 add(InputButton.A to stringResource(R.string.version_picker_footer_select))
-                if (uiState.drilledIntoLabel != null) {
+                if (uiState.drilledIntoLabel != null && uiState.hasVersionListBehind) {
                     add(InputButton.B to stringResource(R.string.version_picker_footer_back_to_versions))
                 } else {
                     add(InputButton.B to stringResource(R.string.version_picker_footer_back))
@@ -192,7 +210,8 @@ private fun VersionRowCard(row: VersionPickerRow, isFocused: Boolean, onClick: (
             modifier = Modifier.fillMaxWidth().padding(Dimens.spacingMd),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (row.isPinned) {
+            // What this device is served today — pinned here, or the server's default.
+            if (row.isCurrent) {
                 Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = null,
@@ -218,7 +237,29 @@ private fun VersionRowCard(row: VersionPickerRow, isFocused: Boolean, onClick: (
                     )
                 }
             }
+            // The desktop picker's own columns, as small marks: last played, favourite, RA match,
+            // tag score — then "already downloaded on this device".
+            if (row.isLastPlayed) Mark(Icons.Default.History, MaterialTheme.colorScheme.onSurfaceVariant)
+            if (row.isFavorite) Mark(Icons.Default.Star, MaterialTheme.colorScheme.primary)
+            if (row.hasRa) Mark(Icons.Default.EmojiEvents, MaterialTheme.colorScheme.tertiary)
+            if (row.score > 0) {
+                Text(
+                    text = stringResource(R.string.version_picker_score, row.score),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = Dimens.spacingSm)
+                )
+            }
+            if (row.isLocal) Mark(Icons.Default.DownloadDone, MaterialTheme.colorScheme.primary)
             if (row.isDrillable) {
+                row.romCount?.let { count ->
+                    Text(
+                        text = stringResource(R.string.version_picker_rom_count, count),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = Dimens.spacingSm)
+                    )
+                }
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
                     contentDescription = null,
@@ -227,4 +268,14 @@ private fun VersionRowCard(row: VersionPickerRow, isFocused: Boolean, onClick: (
             }
         }
     }
+}
+
+@Composable
+private fun Mark(icon: ImageVector, tint: Color) {
+    Icon(
+        imageVector = icon,
+        contentDescription = null,
+        tint = tint,
+        modifier = Modifier.padding(start = Dimens.spacingSm).size(Dimens.iconSm)
+    )
 }
