@@ -474,21 +474,34 @@ private fun RALoginForm(
 
         Spacer(modifier = Modifier.height(Dimens.spacingSm))
 
+        // LiteBox only (Mehdi, 2026-09-07): fetch the desktop's own RetroAchievements login instead
+        // of typing it - a card on the desktop has to be approved first. Sits above Login, so the
+        // two rows below shift by one when it is there (SettingsConfirmRouter mirrors this).
+        val shift = if (raState.liteBoxSyncAvailable) 1 else 0
+        if (raState.liteBoxSyncAvailable) {
+            ActionPreference(
+                title = raState.liteBoxSyncStatus ?: stringResource(R.string.settings_ra_login_litebox_title),
+                subtitle = stringResource(R.string.settings_ra_login_litebox_subtitle),
+                isFocused = focusedIndex == 2,
+                onClick = { viewModel.syncRAFromLiteBox() }
+            )
+        }
+
         ActionPreference(
-            title = if (raState.isLoggingIn) {
+            title = if (raState.isLoggingIn && raState.liteBoxSyncStatus == null) {
                 stringResource(R.string.settings_ra_login_submit_title_busy)
             } else {
                 stringResource(R.string.settings_ra_login_submit_title)
             },
             subtitle = stringResource(R.string.settings_ra_login_submit_subtitle),
-            isFocused = focusedIndex == 2,
+            isFocused = focusedIndex == 2 + shift,
             onClick = { viewModel.loginToRA() }
         )
 
         ActionPreference(
             title = stringResource(R.string.settings_ra_login_cancel_title),
             subtitle = stringResource(R.string.settings_ra_login_cancel_subtitle),
-            isFocused = focusedIndex == 3,
+            isFocused = focusedIndex == 3 + shift,
             onClick = { viewModel.hideRALoginForm() }
         )
     }

@@ -249,4 +249,16 @@ class RomMRepository @Inject constructor(
 
     suspend fun liteBoxUnpinVersion(romId: Long): RomMResult<LiteBoxPinResponse> =
         liteBoxService.unpinVersion(romId)
+
+    /** True only against a LiteBox that holds a RetroAchievements login to share (probes once). */
+    suspend fun liteBoxSupportsRaCredentials(): Boolean {
+        liteBoxService.capabilities()
+        return liteBoxService.supportsRaCredentials()
+    }
+
+    suspend fun liteBoxRequestRaCredentials(): RomMResult<LiteBoxRaRequestResponse> =
+        liteBoxService.requestRaCredentials()
+
+    suspend fun liteBoxPollRaCredentials(requestId: String): LiteBoxRaPoll =
+        liteBoxService.pollRaCredentials(requestId)
 }

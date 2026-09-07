@@ -1755,6 +1755,7 @@ class SettingsViewModel @Inject constructor(
     fun clearRAFocusField() = raDelegate.clearFocusField()
 
     fun loginToRA() = routeLoginToRA(this)
+    fun syncRAFromLiteBox() = raDelegate.syncFromLiteBox(viewModelScope) { _uiState.update { it.copy(focusedIndex = 0) } }
     fun logoutFromRA() = routeLogoutFromRA(this)
     fun pushRACredentialsToRetroArch() = raDelegate.pushToRetroArch(viewModelScope) { count ->
         when {

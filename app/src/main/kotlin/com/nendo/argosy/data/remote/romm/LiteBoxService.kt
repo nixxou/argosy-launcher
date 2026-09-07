@@ -109,4 +109,50 @@ class LiteBoxService @Inject constructor(
             RomMResult.Error(e.message ?: "Connection failed")
         }
     }
+
+    /** The desktop announces this only when it actually holds a RetroAchievements login (username
+     * AND connect token) — so a true here means the button will not just answer 409. */
+    fun supportsRaCredentials(): Boolean {
+        val client = api ?: return false
+        val c = cached ?: return false
+        return c.first === client && c.second.features.contains("ra-credentials")
+    }
+
+    /** Asks the desktop to share its RetroAchievements login; a card goes up over there. */
+    suspend fun requestRaCredentials(): RomMResult<LiteBoxRaRequestResponse> {
+        val client = api ?: return RomMResult.Error("Not connected")
+        return try {
+            val response = client.requestLiteBoxRaCredentials()
+            if (response.isSuccessful) RomMResult.Success(response.body() ?: LiteBoxRaRequestResponse())
+            else RomMResult.Error("Server returned ${response.code()}", code = response.code())
+        } catch (e: Exception) {
+            RomMResult.Error(e.message ?: "Connection failed")
+        }
+    }
+
+    /** One poll. The 400 `detail` words are the pairing flow's (authorization_pending, access_denied,
+     * expired_token); anything else is a failure worth showing. */
+    suspend fun pollRaCredentials(requestId: String): LiteBoxRaPoll {
+        val client = api ?: return LiteBoxRaPoll.Failed("Not connected")
+        return try {
+            val response = client.pollLiteBoxRaCredentials(requestId)
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body == null || body.username.isBlank() || body.token.isBlank()) LiteBoxRaPoll.Failed("Empty answer")
+                else LiteBoxRaPoll.Ready(body)
+            } else {
+                val detail = try {
+                    org.json.JSONObject(response.errorBody()?.string().orEmpty()).optString("detail")
+                } catch (_: Exception) { "" }
+                when (detail) {
+                    "authorization_pending", "slow_down" -> LiteBoxRaPoll.Pending
+                    "access_denied" -> LiteBoxRaPoll.Denied
+                    "expired_token" -> LiteBoxRaPoll.Expired
+                    else -> LiteBoxRaPoll.Failed(detail.ifBlank { "Server returned ${response.code()}" })
+                }
+            }
+        } catch (e: Exception) {
+            LiteBoxRaPoll.Failed(e.message ?: "Connection failed")
+        }
+    }
 }

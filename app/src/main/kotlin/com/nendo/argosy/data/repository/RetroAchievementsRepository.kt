@@ -232,6 +232,16 @@ class RetroAchievementsRepository @Inject constructor(
         }
     }
 
+    /** A username + connect token obtained without a password round-trip (the LiteBox desktop shared
+     * its own) — stored exactly as [login] stores what login2 returns, with the same cache reset. */
+    suspend fun adoptCredentials(username: String, token: String): RALoginResult {
+        if (username.isBlank() || token.isBlank()) return RALoginResult.Error("Empty credentials")
+        prefsRepository.setRACredentials(username, token)
+        gameDao.clearAllAchievementsFetchedAt()
+        Logger.info(TAG, "Adopted RetroAchievements login for $username; cleared achievement-fetch timestamps")
+        return RALoginResult.Success(username)
+    }
+
     suspend fun logout() {
         Logger.info(TAG, "Logging out")
         prefsRepository.clearRACredentials()

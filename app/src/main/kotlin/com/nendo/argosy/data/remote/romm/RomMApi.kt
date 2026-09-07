@@ -390,4 +390,12 @@ interface RomMApi {
         @Path("id") romId: Long,
         @Body body: LiteBoxPinRequest
     ): Response<LiteBoxPinResponse>
+
+    @POST("api/litebox/ra/credentials/request")
+    suspend fun requestLiteBoxRaCredentials(): Response<LiteBoxRaRequestResponse>
+
+    @GET("api/litebox/ra/credentials/{requestId}")
+    suspend fun pollLiteBoxRaCredentials(
+        @Path("requestId") requestId: String
+    ): Response<LiteBoxRaCredentials>
 }

@@ -315,6 +315,12 @@
     <string name="settings_ra_login_submit_subtitle">登入RetroAchievements</string>
     <string name="settings_ra_login_cancel_title">取消</string>
     <string name="settings_ra_login_cancel_subtitle">返回RetroAchievements設定</string>
+    <string name="settings_ra_login_litebox_title">從 LiteBox 取得登入</string>
+    <string name="settings_ra_login_litebox_subtitle">在 LiteBox 桌面上核准請求</string>
+    <string name="settings_ra_login_litebox_waiting">等待桌面核准…</string>
+    <string name="settings_ra_login_litebox_denied">已在桌面拒絕</string>
+    <string name="settings_ra_login_litebox_expired">請求已過期，請重試</string>
+    <string name="settings_ra_login_litebox_unavailable">此伺服器沒有可共享的 RetroAchievements 登入</string>
 
     <string name="settings_bios_path_title">BIOS目錄</string>
     <string name="settings_bios_path_internal">內部儲存空間（預設）</string>

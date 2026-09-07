@@ -688,6 +688,12 @@
     <string name="settings_ra_login_cancel_title">Cancel</string>
     <!-- Second line of that button. -->
     <string name="settings_ra_login_cancel_subtitle">Return to RetroAchievements settings</string>
+    <string name="settings_ra_login_litebox_title">Get login from LiteBox</string>
+    <string name="settings_ra_login_litebox_subtitle">Approve the request on the LiteBox desktop</string>
+    <string name="settings_ra_login_litebox_waiting">Waiting for approval on the desktop…</string>
+    <string name="settings_ra_login_litebox_denied">Denied on the desktop</string>
+    <string name="settings_ra_login_litebox_expired">The request expired, try again</string>
+    <string name="settings_ra_login_litebox_unavailable">This server has no RetroAchievements login to share</string>
 
     <!-- ===== BIOS section =====
          "BIOS" is the standard term in emulation for a console's own startup software and is

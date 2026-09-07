@@ -364,6 +364,12 @@
     <string name="settings_ra_login_submit_subtitle">Войти в RetroAchievements</string>
     <string name="settings_ra_login_cancel_title">Отмена</string>
     <string name="settings_ra_login_cancel_subtitle">Вернуться к настройкам RetroAchievements</string>
+    <string name="settings_ra_login_litebox_title">Получить вход из LiteBox</string>
+    <string name="settings_ra_login_litebox_subtitle">Подтвердите запрос на компьютере с LiteBox</string>
+    <string name="settings_ra_login_litebox_waiting">Ожидание подтверждения на компьютере…</string>
+    <string name="settings_ra_login_litebox_denied">Отклонено на компьютере</string>
+    <string name="settings_ra_login_litebox_expired">Запрос истёк, попробуйте ещё раз</string>
+    <string name="settings_ra_login_litebox_unavailable">На этом сервере нет входа RetroAchievements для передачи</string>
 
     <!-- ===== BIOS section ===== -->
 

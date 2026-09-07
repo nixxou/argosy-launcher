@@ -1,5 +1,6 @@
 package com.nendo.argosy.data.remote.romm
 
+import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
 /**
@@ -75,3 +76,29 @@ data class LiteBoxPinResponse(
     val ok: Boolean = false,
     val romId: Long = 0L
 )
+
+/** POST .../ra/credentials/request: the ticket to poll with, RFC 8628-style like the pairing flow. */
+@JsonClass(generateAdapter = true)
+data class LiteBoxRaRequestResponse(
+    @Json(name = "request_id") val requestId: String = "",
+    @Json(name = "expires_in") val expiresIn: Int = 300,
+    val interval: Int = 3
+)
+
+/** What the desktop shares once a human approved: the RetroAchievements username and CONNECT token
+ * (what login2 returns, what Argosy stores) — never a password, the server has none. */
+@JsonClass(generateAdapter = true)
+data class LiteBoxRaCredentials(
+    val username: String = "",
+    val token: String = ""
+)
+
+/** One poll of the hand-over. The server answers 400 with an RFC 8628 word in `detail` until the
+ * human decides; a client branches on the exact word, hence a sealed result rather than a code. */
+sealed class LiteBoxRaPoll {
+    object Pending : LiteBoxRaPoll()
+    object Denied : LiteBoxRaPoll()
+    object Expired : LiteBoxRaPoll()
+    data class Ready(val credentials: LiteBoxRaCredentials) : LiteBoxRaPoll()
+    data class Failed(val message: String) : LiteBoxRaPoll()
+}

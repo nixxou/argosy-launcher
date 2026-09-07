@@ -1233,6 +1233,10 @@ data class RASettingsState(
     val loginUsername: String = "",
     val loginPassword: String = "",
     val loginError: String? = null,
+    // LiteBox only: the server holds a RetroAchievements login it can share on desktop approval.
+    val liteBoxSyncAvailable: Boolean = false,
+    // Non-null while a hand-over is in flight - what the button reads meanwhile.
+    val liteBoxSyncStatus: String? = null,
     val focusField: Int? = null,
     val pendingAchievementsCount: Int = 0,
     val proxyEnabled: Boolean = false,
