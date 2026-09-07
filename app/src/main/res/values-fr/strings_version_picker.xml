@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="version_picker_empty">Ce jeu n\'a aucune autre version.</string>
+    <string name="version_picker_footer_navigate">Naviguer</string>
+    <string name="version_picker_footer_select">Sélectionner</string>
+    <string name="version_picker_footer_back">Retour</string>
+    <string name="version_picker_footer_back_to_versions">Retour aux versions</string>
+    <string name="version_picker_roms_from">Roms contenues dans %1$s</string>
+    <string name="version_picker_rom_count">%1$d roms</string>
+    <string name="version_picker_score">%1$d pts</string>
+</resources>

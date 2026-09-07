@@ -651,6 +651,11 @@ class GameDetailViewModel @Inject constructor(
                     dlcFiles = dlcFilesUi,
                     hasManageableFiles = manageableFileCount > 0,
                     hasVariants = hasVariants,
+                    // Reset here, filled in by refreshLiteBoxVersionsInBackground once the server
+                    // answers — this ViewModel is reused across next/previous game, so a stale
+                    // count from the last game must not survive into this one.
+                    hasLiteBoxVersions = false,
+                    liteBoxVersionCount = 0,
                     siblingGameIds = siblingIds,
                     currentGameIndex = currentIndex,
                     isPrivate = isPrivate,
@@ -658,6 +663,8 @@ class GameDetailViewModel @Inject constructor(
                     syncScreenshotsEnabled = prefs.syncScreenshotsEnabled
                 )
             }
+
+            refreshLiteBoxVersionsInBackground(game)
 
             if (game.rommId != null || game.effectiveRaId != null || RAConsoleIds.isSupported(game.platformSlug)) {
                 refreshAchievementsInBackground(game.rommId, gameId)
@@ -1845,7 +1852,8 @@ class GameDetailViewModel @Inject constructor(
             hasSaveSync = hasSaveSync,
             hasRelated = state.relatedGames.isNotEmpty(),
             hasPerGameSettings = game != null && !game.isSteamGame && !game.isAndroidApp &&
-                state.downloadStatus == GameDownloadStatus.DOWNLOADED
+                state.downloadStatus == GameDownloadStatus.DOWNLOADED,
+            hasLiteBoxVersions = state.hasLiteBoxVersions
         )
     }
 
@@ -1879,7 +1887,37 @@ class GameDetailViewModel @Inject constructor(
             MenuItem.Reviews -> showReviewList()
             MenuItem.Achievements -> showAchievementList()
             MenuItem.RelatedGames -> {}
+            // Navigation is decided by the caller (it needs the game id, which this ViewModel-level
+            // action has no way to hand back) — see onConfirm/onHintClick, same as RelatedGames above.
+            MenuItem.VersionSwitch -> {}
             null -> {}
+        }
+    }
+
+    /**
+     * LiteBox-only, off the load path: Game Detail renders first and the version-switch entry
+     * appears once the server has answered (it is the LAST menu item, so its arrival shifts no other
+     * focus index). A no-op for an official RomM server (the capability probe says no, and says so
+     * cheaply — cached per server in LiteBoxService) and when offline.
+     */
+    private fun refreshLiteBoxVersionsInBackground(game: com.nendo.argosy.data.local.entity.GameEntity) {
+        val rommId = game.rommId ?: return
+        if (!com.nendo.argosy.util.NetworkUtils.isOnline(context)) return
+        viewModelScope.launch {
+            if (!romMRepository.liteBoxSupportsVersionSwitch()) return@launch
+            val versions = (romMRepository.liteBoxListVersions(rommId) as? RomMResult.Success)?.data
+                ?: return@launch
+            _uiState.update { state ->
+                // The user may have moved to the next game while this was in flight.
+                if (state.game?.id != game.id) state
+                else state.copy(
+                    // Worth an entry when there is something to choose: several versions, or a
+                    // single eligible archive whose roms are the choice (the picker then opens
+                    // straight on them). One version served whole has nothing to switch to.
+                    hasLiteBoxVersions = versions.size > 1 || versions.any { it.eligible },
+                    liteBoxVersionCount = versions.singleOrNull()?.takeIf { it.eligible }?.romCount ?: versions.size
+                )
+            }
         }
     }
 
@@ -2188,7 +2226,8 @@ class GameDetailViewModel @Inject constructor(
         onPrevGame: () -> Unit = {},
         onNextGame: () -> Unit = {},
         isInScreenshotsSection: () -> Boolean = { false },
-        onNavigateToGame: (Long) -> Unit = {}
+        onNavigateToGame: (Long) -> Unit = {},
+        onNavigateToVersionPicker: (Long) -> Unit = {}
     ): InputHandler = object : InputHandler {
         override fun onUp(): InputResult {
             val state = _uiState.value
@@ -2399,6 +2438,8 @@ class GameDetailViewModel @Inject constructor(
                 state.showMoreOptions -> confirmOptionSelection(onBack, onNavigateToPlatformSettings)
                 menuLayout.itemAtFocusIndex(state.menuFocusIndex, menuLayoutState()) == MenuItem.RelatedGames ->
                     focusedRelatedGameId()?.let(onNavigateToGame)
+                menuLayout.itemAtFocusIndex(state.menuFocusIndex, menuLayoutState()) == MenuItem.VersionSwitch ->
+                    state.game?.id?.let(onNavigateToVersionPicker)
                 else -> executeMenuAction()
             }
             return InputResult.HANDLED

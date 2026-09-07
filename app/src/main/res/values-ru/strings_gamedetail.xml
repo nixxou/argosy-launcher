@@ -491,4 +491,8 @@
     <string name="reviews_editor_footer_submit">Опубликовать</string>
     <string name="reviews_editor_footer_delete">Удалить</string>
     <string name="reviews_editor_footer_back">Назад</string>
+
+    <string name="gamedetail_menu_version_switch">Версии</string>
+    <string name="gamedetail_menu_version_switch_description">Доступно версий: %1$d</string>
+    <string name="gamedetail_footer_version_switch">Сменить версию</string>
 </resources>

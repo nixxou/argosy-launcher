@@ -84,6 +84,13 @@
          favourite. Verb phrase. -->
     <string name="gamedetail_menu_favorite_row_add_description">Add to favorites</string>
 
+    <!-- Left menu row: opens the LiteBox version/rom picker (RommLiteBoxApi.cs). Only ever shown
+         against a LiteBox server that reports more than one version for this game. -->
+    <string name="gamedetail_menu_version_switch">Versions</string>
+    <!-- Spoken description of the version-switch icon in the narrow icon-only menu, with the
+         number of versions available. -->
+    <string name="gamedetail_menu_version_switch_description">%1$d versions available</string>
+
     <!-- Left menu row when the game is hidden from the user's friends. Adjective describing the
          game's visibility, not a command. -->
     <string name="gamedetail_menu_privacy_private">Private</string>
@@ -174,6 +181,8 @@
     <string name="gamedetail_footer_view_reviews">Read Reviews</string>
     <!-- Footer hint while the related-games row is selected. Verb: goes to that game's page. -->
     <string name="gamedetail_footer_open_related">Open</string>
+    <!-- Footer hint on the game page: opens the LiteBox version/rom picker. Verb. -->
+    <string name="gamedetail_footer_version_switch">Switch version</string>
     <!-- Footer hint on the game page. Verb: returns to the previous screen. -->
     <string name="gamedetail_footer_back">Back</string>
     <!-- Footer hint on the play row for a game that runs in the built-in emulator. Noun phrase:

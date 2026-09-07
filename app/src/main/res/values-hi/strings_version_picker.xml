@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="version_picker_empty">इस गेम का कोई और संस्करण नहीं है।</string>
+    <string name="version_picker_footer_navigate">नेविगेट करें</string>
+    <string name="version_picker_footer_select">चुनें</string>
+    <string name="version_picker_footer_back">वापस</string>
+    <string name="version_picker_footer_back_to_versions">संस्करणों पर वापस</string>
+    <string name="version_picker_roms_from">%1$s के अंदर रोम</string>
+    <string name="version_picker_rom_count">%1$d रोम</string>
+    <string name="version_picker_score">%1$d अंक</string>
+</resources>

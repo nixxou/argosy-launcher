@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="version_picker_empty">У этой игры нет других версий.</string>
+    <string name="version_picker_footer_navigate">Навигация</string>
+    <string name="version_picker_footer_select">Выбрать</string>
+    <string name="version_picker_footer_back">Назад</string>
+    <string name="version_picker_footer_back_to_versions">Назад к версиям</string>
+    <string name="version_picker_roms_from">Ромы внутри %1$s</string>
+    <string name="version_picker_rom_count">%1$d ромов</string>
+    <string name="version_picker_score">%1$d очк.</string>
+</resources>

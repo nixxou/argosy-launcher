@@ -373,4 +373,21 @@ interface RomMApi {
 
     @GET("api/litebox/capabilities")
     suspend fun getLiteBoxCapabilities(): Response<LiteBoxCapabilitiesResponse>
+
+    @GET("api/litebox/roms/{id}/versions")
+    suspend fun getLiteBoxVersions(
+        @Path("id") romId: Long
+    ): Response<List<LiteBoxVersion>>
+
+    @GET("api/litebox/roms/{id}/versions/{appId}/roms")
+    suspend fun getLiteBoxRomsInVersion(
+        @Path("id") romId: Long,
+        @Path("appId", encoded = true) appId: String
+    ): Response<LiteBoxRomsInVersion>
+
+    @POST("api/litebox/roms/{id}/pin")
+    suspend fun pinLiteBoxVersion(
+        @Path("id") romId: Long,
+        @Body body: LiteBoxPinRequest
+    ): Response<LiteBoxPinResponse>
 }

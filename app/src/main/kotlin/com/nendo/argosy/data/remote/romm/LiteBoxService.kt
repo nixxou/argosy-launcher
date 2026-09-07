@@ -56,4 +56,57 @@ class LiteBoxService @Inject constructor(
         cached = client to result
         return result
     }
+
+    suspend fun listVersions(romId: Long): RomMResult<List<LiteBoxVersion>> {
+        val client = api ?: return RomMResult.Error("Not connected")
+        return try {
+            val response = client.getLiteBoxVersions(romId)
+            if (response.isSuccessful) RomMResult.Success(response.body() ?: emptyList())
+            else RomMResult.Error("Server returned ${response.code()}", code = response.code())
+        } catch (e: Exception) {
+            RomMResult.Error(e.message ?: "Connection failed")
+        }
+    }
+
+    /** The second screen: only ever called for a version listVersions said was eligible — the server
+     * answers 400 for one served whole, since it has no roms to pick. */
+    suspend fun listRomsInVersion(romId: Long, appId: String?): RomMResult<LiteBoxRomsInVersion> {
+        val client = api ?: return RomMResult.Error("Not connected")
+        val segment = appId?.takeIf { it.isNotBlank() } ?: LITEBOX_MAIN_VERSION
+        return try {
+            val response = client.getLiteBoxRomsInVersion(romId, segment)
+            if (response.isSuccessful) RomMResult.Success(response.body() ?: LiteBoxRomsInVersion())
+            else RomMResult.Error("Server returned ${response.code()}", code = response.code())
+        } catch (e: Exception) {
+            RomMResult.Error(e.message ?: "Connection failed")
+        }
+    }
+
+    /** Locks this device onto one specific file. Both blank means the game's own ROM as a whole. */
+    suspend fun pinVersion(romId: Long, appId: String?, path: String?): RomMResult<LiteBoxPinResponse> {
+        val client = api ?: return RomMResult.Error("Not connected")
+        return try {
+            val response = client.pinLiteBoxVersion(
+                romId,
+                LiteBoxPinRequest(unpin = false, appId = appId.orEmpty(), path = path.orEmpty())
+            )
+            if (response.isSuccessful) RomMResult.Success(response.body() ?: LiteBoxPinResponse())
+            else RomMResult.Error("Server returned ${response.code()}", code = response.code())
+        } catch (e: Exception) {
+            RomMResult.Error(e.message ?: "Connection failed")
+        }
+    }
+
+    /** Releases this device back to the game's own default — the ranking the server already computes,
+     * for ever, rather than whatever it happens to be right now. */
+    suspend fun unpinVersion(romId: Long): RomMResult<LiteBoxPinResponse> {
+        val client = api ?: return RomMResult.Error("Not connected")
+        return try {
+            val response = client.pinLiteBoxVersion(romId, LiteBoxPinRequest(unpin = true))
+            if (response.isSuccessful) RomMResult.Success(response.body() ?: LiteBoxPinResponse())
+            else RomMResult.Error("Server returned ${response.code()}", code = response.code())
+        } catch (e: Exception) {
+            RomMResult.Error(e.message ?: "Connection failed")
+        }
+    }
 }

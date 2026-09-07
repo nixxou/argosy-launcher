@@ -515,4 +515,8 @@
     <string name="reviews_editor_footer_submit">Veröffentlichen</string>
     <string name="reviews_editor_footer_delete">Löschen</string>
     <string name="reviews_editor_footer_back">Zurück</string>
+
+    <string name="gamedetail_menu_version_switch">Versionen</string>
+    <string name="gamedetail_menu_version_switch_description">%1$d Versionen verfügbar</string>
+    <string name="gamedetail_footer_version_switch">Version wechseln</string>
 </resources>

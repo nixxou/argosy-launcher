@@ -234,4 +234,16 @@ class RomMRepository @Inject constructor(
         liteBoxService.capabilities()
         return liteBoxService.supportsVersionSwitch()
     }
+
+    suspend fun liteBoxListVersions(romId: Long): RomMResult<List<LiteBoxVersion>> =
+        liteBoxService.listVersions(romId)
+
+    suspend fun liteBoxListRomsInVersion(romId: Long, appId: String?): RomMResult<LiteBoxRomsInVersion> =
+        liteBoxService.listRomsInVersion(romId, appId)
+
+    suspend fun liteBoxPinVersion(romId: Long, appId: String?, path: String?): RomMResult<LiteBoxPinResponse> =
+        liteBoxService.pinVersion(romId, appId, path)
+
+    suspend fun liteBoxUnpinVersion(romId: Long): RomMResult<LiteBoxPinResponse> =
+        liteBoxService.unpinVersion(romId)
 }

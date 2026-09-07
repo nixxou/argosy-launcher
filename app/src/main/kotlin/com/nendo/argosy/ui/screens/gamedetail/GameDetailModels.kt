@@ -292,6 +292,11 @@ data class GameDetailUiState(
     val reviewListFocusIndex: Int = 0,
     val reviewEditor: ReviewEditorState? = null,
     val hasVariants: Boolean = false,
+    // LiteBox-only: this game offers more than one version/rom a client can lock onto (server
+    // extension, RommLiteBoxApi.cs — see LiteBoxService's own header). Absent (false, 0) for an
+    // official RomM server, which never answers the capability probe this is gated behind.
+    val hasLiteBoxVersions: Boolean = false,
+    val liteBoxVersionCount: Int = 0,
     val hasSocialAccount: Boolean = false,
     val isPrivate: Boolean = false,
     val perGameSettings: com.nendo.argosy.ui.screens.gamedetail.delegates.PerGameSettingsState =

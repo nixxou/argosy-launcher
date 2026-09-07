@@ -451,4 +451,8 @@
     <string name="reviews_editor_footer_submit">發布</string>
     <string name="reviews_editor_footer_delete">刪除</string>
     <string name="reviews_editor_footer_back">返回</string>
+
+    <string name="gamedetail_menu_version_switch">版本</string>
+    <string name="gamedetail_menu_version_switch_description">%1$d 個可用版本</string>
+    <string name="gamedetail_footer_version_switch">切換版本</string>
 </resources>

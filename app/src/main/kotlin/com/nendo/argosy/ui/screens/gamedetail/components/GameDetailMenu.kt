@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.InstallMobile
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Schedule
@@ -74,7 +75,8 @@ data class MenuLayoutState(
     val hasSocialAccount: Boolean = false,
     val hasSaveSync: Boolean = false,
     val hasRelated: Boolean = false,
-    val hasPerGameSettings: Boolean = false
+    val hasPerGameSettings: Boolean = false,
+    val hasLiteBoxVersions: Boolean = false
 )
 
 sealed class MenuItem(
@@ -93,10 +95,14 @@ sealed class MenuItem(
     data object Reviews : MenuItem("reviews", visibleWhen = { it.hasSocialAccount })
     data object Achievements : MenuItem("achievements", visibleWhen = { it.hasAchievements })
     data object RelatedGames : MenuItem("related", visibleWhen = { it.hasRelated })
+    // LiteBox-only (RommLiteBoxApi.cs): a real RomM server never reports this, so it stays hidden
+    // for every official client. Last on purpose — Mehdi (2026-09-06): "une option sur le menu en
+    // dessous de ceux existants", below Related games, not wedged among the top actions.
+    data object VersionSwitch : MenuItem("version_switch", visibleWhen = { it.hasLiteBoxVersions })
 
     companion object {
         val ALL: List<MenuItem>
-            get() = listOf(Play, Saves, Favorite, Privacy, PerGameSettings, Options, Details, Description, Screenshots, Reviews, Achievements, RelatedGames)
+            get() = listOf(Play, Saves, Favorite, Privacy, PerGameSettings, Options, Details, Description, Screenshots, Reviews, Achievements, RelatedGames, VersionSwitch)
     }
 }
 
@@ -116,7 +122,8 @@ data class GameDetailMenuState(
     val saveStatus: SaveStatusInfo? = null,
     val isSyncingSaves: Boolean = false,
     val downloadSizeBytes: Long? = null,
-    val isPrivate: Boolean = false
+    val isPrivate: Boolean = false,
+    val liteBoxVersionCount: Int = 0
 )
 
 @Composable
@@ -183,6 +190,15 @@ fun GameDetailMenu(
                 MenuItem.Favorite -> {
                     FavoriteMenuItem(
                         isFavorite = displayState.isFavorite,
+                        isFocused = isFocused,
+                        isCompact = isCompact,
+                        onClick = { onFocusChange(focusIndex); onItemClick(item) }
+                    )
+                }
+
+                MenuItem.VersionSwitch -> {
+                    VersionSwitchMenuItem(
+                        versionCount = displayState.liteBoxVersionCount,
                         isFocused = isFocused,
                         isCompact = isCompact,
                         onClick = { onFocusChange(focusIndex); onItemClick(item) }
@@ -592,6 +608,75 @@ private fun FavoriteMenuItem(
                     } else {
                         stringResource(R.string.gamedetail_menu_favorite_row_add_description)
                     },
+                    tint = iconTint,
+                    modifier = Modifier.size(Dimens.iconSm)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun VersionSwitchMenuItem(
+    versionCount: Int,
+    isFocused: Boolean,
+    isCompact: Boolean,
+    onClick: () -> Unit
+) {
+    val iconTint = if (isFocused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    val textColor = if (isFocused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    val textStyle = if (isFocused) {
+        MaterialTheme.typography.bodyMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+    } else {
+        MaterialTheme.typography.bodyMedium
+    }
+    val label = stringResource(R.string.gamedetail_menu_version_switch)
+
+    // The count is plain text next to (or under) the icon, never a Badge bubble over it — the bubble
+    // overlapped the icon in the narrow icon-only menu (Mehdi, 2026-09-06: "badge dégueux").
+    MenuItemWithLeftBorder(
+        isFocused = isFocused,
+        isCompact = isCompact,
+        onClick = onClick
+    ) {
+        if (isCompact) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = Icons.Default.Layers,
+                    contentDescription = stringResource(R.string.gamedetail_menu_version_switch_description, versionCount),
+                    tint = iconTint,
+                    modifier = Modifier.size(Dimens.iconSm)
+                )
+                if (versionCount > 0) {
+                    Text(
+                        text = versionCount.toString(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = textColor
+                    )
+                }
+            }
+        } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = label,
+                    style = textStyle,
+                    color = textColor,
+                    modifier = Modifier.weight(1f)
+                )
+                if (versionCount > 0) {
+                    Text(
+                        text = versionCount.toString(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = textColor.copy(alpha = 0.7f)
+                    )
+                    Spacer(modifier = Modifier.width(Dimens.spacingSm))
+                }
+                Icon(
+                    imageVector = Icons.Default.Layers,
+                    contentDescription = label,
                     tint = iconTint,
                     modifier = Modifier.size(Dimens.iconSm)
                 )

@@ -36,6 +36,12 @@ sealed class Screen(val route: String) {
     data object GameDetail : Screen("game/{gameId}") {
         fun createRoute(gameId: Long) = "game/$gameId"
     }
+    /** LiteBox-only: the full-page version/rom picker (RommLiteBoxApi.cs) — deliberately a real
+     * screen, not one of the small in-place pickers (disc/variant/memcard) the rest of Game Detail
+     * uses, since a game can offer thousands of choices here. */
+    data object VersionPicker : Screen("game/{gameId}/versions") {
+        fun createRoute(gameId: Long) = "game/$gameId/versions"
+    }
     /**
      * The media grid. [route] stays the bare path so the drawer keeps navigating and identifying by
      * it; [ROUTE_WITH_ARGS] is what the graph declares, and its library argument is optional so a
@@ -70,6 +76,12 @@ sealed class Screen(val route: String) {
         const val ROUTE_COLLECTION_DETAIL = "collection"
         const val ROUTE_VIRTUAL_BROWSER = "virtual"
         const val ROUTE_GAME_DETAIL = "game"
+        // The FULL template, not a short key: InputDispatcher.isRouteMatch compares the active
+        // destination's route template by prefix / first segment, and this screen's first segment is
+        // "game" — the same as ROUTE_GAME_DETAIL. A shorter key could never match, so the picker's
+        // handler stayed parked forever while Game Detail's kept receiving every button press
+        // (measured live 2026-09-06: list shown, no gamepad control at all).
+        const val ROUTE_VERSION_PICKER = "game/{gameId}/versions"
         const val ROUTE_SETTINGS = "settings"
         const val ROUTE_DOWNLOADS = "downloads"
         const val ROUTE_SAVE_SYNC = "save_sync"

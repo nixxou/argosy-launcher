@@ -13,3 +13,65 @@ data class LiteBoxCapabilitiesResponse(
     val liteBox: Boolean = false,
     val features: List<String> = emptyList()
 )
+
+/** One top-level choice for a game — its own file (empty appId) or one Additional Application.
+ * [eligible] is the server's own verdict, the rule its rom_id generation uses (RommFiles.CandidatesOf:
+ * extractor on, archive, platform not zip-native, extraction enabled for the emulator, a mode other
+ * than DoNothing): an eligible version is chosen rom by rom on a second screen, never pinned whole.
+ * [romCount] is known only for an eligible version whose archive the server has already analysed.
+ * [romId] is the id a whole-file version already has, null until something pins it (or when
+ * eligible — only its roms carry ids). [isCurrent] says this device is served from it today. */
+@JsonClass(generateAdapter = true)
+data class LiteBoxVersion(
+    val appId: String = "",
+    val label: String = "",
+    val fileName: String = "",
+    val size: Long = 0L,
+    val eligible: Boolean = false,
+    val romCount: Int? = null,
+    val romId: Long? = null,
+    val isPinned: Boolean = false,
+    val isCurrent: Boolean = false
+)
+
+/** One rom inside a single eligible version's archive. [path] is the archive-relative entry path,
+ * opaque to Argosy — round-tripped verbatim into the pin request. The flags are the desktop
+ * picker's own columns (favourite, last played, tag score, RetroAchievements match). */
+@JsonClass(generateAdapter = true)
+data class LiteBoxRomEntry(
+    val path: String = "",
+    val label: String = "",
+    val fileName: String = "",
+    val size: Long = 0L,
+    val romId: Long? = null,
+    val isPinned: Boolean = false,
+    val isCurrent: Boolean = false,
+    val isFavorite: Boolean = false,
+    val isLastPlayed: Boolean = false,
+    val score: Int = 0,
+    val hasRa: Boolean = false
+)
+
+/** The second screen's payload: which version, and which archive file, the roms come from. */
+@JsonClass(generateAdapter = true)
+data class LiteBoxRomsInVersion(
+    val appId: String = "",
+    val versionLabel: String = "",
+    val archiveFileName: String = "",
+    val roms: List<LiteBoxRomEntry> = emptyList()
+)
+
+/** Body for POST .../pin. [unpin] alone means "follow the default again"; otherwise [appId]/[path]
+ * name the choice, both blank meaning the game's own ROM as a whole. */
+@JsonClass(generateAdapter = true)
+data class LiteBoxPinRequest(
+    val unpin: Boolean = false,
+    val appId: String = "",
+    val path: String = ""
+)
+
+@JsonClass(generateAdapter = true)
+data class LiteBoxPinResponse(
+    val ok: Boolean = false,
+    val romId: Long = 0L
+)

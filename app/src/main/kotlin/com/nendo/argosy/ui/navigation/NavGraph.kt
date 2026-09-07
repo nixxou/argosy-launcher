@@ -34,6 +34,7 @@ import com.nendo.argosy.ui.screens.social.FeedEventDetailScreen
 import com.nendo.argosy.ui.screens.social.PostEditorScreen
 import com.nendo.argosy.ui.screens.social.SocialScreen
 import com.nendo.argosy.ui.screens.social.UserProfileScreen
+import com.nendo.argosy.ui.screens.versionpicker.VersionPickerScreen
 
 @Composable
 fun NavGraph(
@@ -260,6 +261,29 @@ fun NavGraph(
                 },
                 onNavigateToGame = { relatedGameId ->
                     navController.navigate(Screen.GameDetail.createRoute(relatedGameId))
+                },
+                onNavigateToVersionPicker = { versionGameId ->
+                    navController.navigate(Screen.VersionPicker.createRoute(versionGameId))
+                }
+            )
+        }
+
+        composable(
+            route = Screen.VersionPicker.route,
+            arguments = listOf(navArgument("gameId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val gameId = backStackEntry.arguments?.getLong("gameId") ?: return@composable
+            VersionPickerScreen(
+                gameId = gameId,
+                onBack = { navController.popBackStack() },
+                // A pin changes the rom_id this client is served, so after the platform re-sync the
+                // game is usually a NEW local row: land on its fresh Game Detail and drop both the
+                // picker and the stale detail beneath it (popBackStack alone would show a game that
+                // no longer exists, and would not reload even when the id happened to survive).
+                onSwitched = { newGameId ->
+                    navController.navigate(Screen.GameDetail.createRoute(newGameId)) {
+                        popUpTo(Screen.GameDetail.route) { inclusive = true }
+                    }
                 }
             )
         }
