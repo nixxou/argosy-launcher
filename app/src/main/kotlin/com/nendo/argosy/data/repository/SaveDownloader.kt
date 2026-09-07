@@ -75,11 +75,20 @@ class SaveDownloader @Inject constructor(
         coreId: String?,
         gameId: Long
     ) {
+        // Case-insensitive: the local hash (SaveArchiver.calculateFileHash, "%02x") is always lowercase,
+        // LiteBox's content_hash (Convert.ToHexString) is always uppercase -- compared raw, EVERY
+        // unchanged-content download read as "changed" and fired the guard for no reason. Measured
+        // 2026-09-08: previous=c791049a5e84 / new=C791049A5E84, same content, guard fired anyway.
+        // Blank (a server row with no content_hash at all) is folded into "unknown", same as null --
+        // an empty string is not a hash to compare against, and treating it as one made an ordinary
+        // "the server didn't send a hash for this asset" case look like a real content change.
+        val prev = previousHash?.lowercase()
+        val next = newHash?.takeIf { it.isNotBlank() }?.lowercase()
         val guardOn = syncPreferencesRepository.isProtectAgainstStaleResume()
         val decision = when {
             emulatorId != "builtin" -> "skip: not the built-in core"
-            previousHash == null || newHash == null -> "skip: a hash is unknown"
-            previousHash == newHash -> "skip: same content"
+            prev == null || next == null -> "skip: a hash is unknown"
+            prev == next -> "skip: same content"
             !guardOn -> "skip: protectAgainstStaleResume off"
             romPath == null -> "skip: no ROM path"
             else -> "delete auto/resume states"
