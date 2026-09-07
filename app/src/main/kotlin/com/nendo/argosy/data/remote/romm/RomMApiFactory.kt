@@ -14,6 +14,9 @@ import javax.inject.Singleton
 
 private const val DOWNLOAD_STALL_TIMEOUT_SECONDS = 900
 
+/** See RommLiteBoxApi.ClientHeader on the server: same string, same meaning. */
+const val LITEBOX_CLIENT_HEADER = "X-LiteBox-Client"
+
 /**
  * Builds a RomM client bound to one base URL and token.
  *
@@ -33,15 +36,16 @@ class RomMApiFactory @Inject constructor(
                     else HttpLoggingInterceptor.Level.NONE
         }
 
+        // The LiteBox handshake, on EVERY request: a server that is really LiteBox unlocks its
+        // extensions (the /api/litebox routes, the additive litebox_game_id rom field) only for a
+        // client carrying this header; a stock RomM ignores an unknown header. Sent unconditionally
+        // because it is stateless - it holds for token and password auth alike and survives a
+        // re-pair - while USING anything still waits for the capabilities probe to say yes.
         val authInterceptor = Interceptor { chain ->
-            val request = if (token != null) {
-                chain.request().newBuilder()
-                    .addHeader("Authorization", "Bearer $token")
-                    .build()
-            } else {
-                chain.request()
-            }
-            chain.proceed(request)
+            val builder = chain.request().newBuilder()
+                .addHeader(LITEBOX_CLIENT_HEADER, "argosy/${BuildConfig.VERSION_NAME}")
+            if (token != null) builder.addHeader("Authorization", "Bearer $token")
+            chain.proceed(builder.build())
         }
 
         val downloadTimeoutInterceptor = Interceptor { chain ->

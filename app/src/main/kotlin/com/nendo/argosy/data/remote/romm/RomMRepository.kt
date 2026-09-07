@@ -15,7 +15,8 @@ class RomMRepository @Inject constructor(
     private val collectionSyncService: RomMCollectionSyncService,
     private val userPropertyService: RomMUserPropertyService,
     private val achievementService: RomMAchievementService,
-    private val userPreferencesRepository: UserPreferencesRepository
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val liteBoxService: LiteBoxService
 ) {
     val syncProgress: StateFlow<SyncProgress> get() = librarySyncService.syncProgress
 
@@ -224,4 +225,13 @@ class RomMRepository @Inject constructor(
 
     suspend fun refreshRAProgressionIfNeeded(force: Boolean = false): RomMResult<Unit> =
         achievementService.refreshRAProgressionIfNeeded(force)
+
+    // --- LiteBox version switching (server-side extension, not part of the RomM contract) ---
+
+    /** Probed once per connection and cached — see LiteBoxService's own header for why a plain
+     * 404/network error here just means "not this server", not a failure. */
+    suspend fun liteBoxSupportsVersionSwitch(): Boolean {
+        liteBoxService.capabilities()
+        return liteBoxService.supportsVersionSwitch()
+    }
 }
