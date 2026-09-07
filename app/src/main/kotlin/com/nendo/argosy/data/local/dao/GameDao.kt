@@ -404,6 +404,14 @@ interface GameDao {
     @Query("SELECT * FROM games WHERE platformId = :platformId AND rommId > 0 AND syncDirty = 0 AND liteboxGameId IS NOT NULL")
     suspend fun getServedKeyedRows(platformId: Long): List<GameEntity>
 
+    /** Other local rows of the same LiteBox game (same key) on a platform. */
+    @Query("SELECT * FROM games WHERE platformId = :platformId AND liteboxGameId = :key AND id != :exceptId")
+    suspend fun getKeyedSiblings(platformId: Long, key: String, exceptId: Long): List<GameEntity>
+
+    /** Rows with no key yet that share the platform and the exact title - versions synced before the key existed. */
+    @Query("SELECT * FROM games WHERE platformId = :platformId AND liteboxGameId IS NULL AND title = :title COLLATE NOCASE AND id != :exceptId")
+    suspend fun getUnkeyedSiblingsByTitle(platformId: Long, title: String, exceptId: Long): List<GameEntity>
+
     @Query("SELECT id, rommId FROM games WHERE rommId IS NOT NULL")
     suspend fun getRommIdMappings(): List<RommIdMapping>
 

@@ -1905,6 +1905,10 @@ class GameDetailViewModel @Inject constructor(
         if (!com.nendo.argosy.util.NetworkUtils.isOnline(context)) return
         viewModelScope.launch {
             if (!romMRepository.liteBoxSupportsVersionSwitch()) return@launch
+            // The game shown is the served version by construction: every other local row of the
+            // same game is one the user switched away from - hide them now, not at the next sync
+            // (whose orphan passes never run against LiteBox, see hideSiblingVersions).
+            romMRepository.liteBoxHideSiblingVersions(game.id)
             val versions = (romMRepository.liteBoxListVersions(rommId) as? RomMResult.Success)?.data
                 ?: return@launch
             _uiState.update { state ->

@@ -1564,6 +1564,38 @@ class RomMLibrarySyncService @Inject constructor(
     }
 
     /**
+     * LiteBox only, run when a game page opens (Mehdi, 2026-09-07): the game being shown is, by
+     * construction, the version this client is served - the server never lists a version the client
+     * switched away from - so every other local row of the same game is a version to hide: same key,
+     * or no key yet (synced before the key existed) but same platform and same title. Independent of
+     * the sync passes on purpose: those sit behind the visibility gate, which LiteBox never opens
+     * (501 on /api/permissions/me). The key is learned from the server when the row lacks it and
+     * persisted, so a later pass needs no request. Returns that key, null on a stock RomM.
+     */
+    suspend fun hideSiblingVersions(gameId: Long): String? = withContext(Dispatchers.IO) {
+        val game = gameDao.getById(gameId) ?: return@withContext null
+        val rommId = game.rommId?.takeIf { it > 0 } ?: return@withContext null
+        val key = game.liteboxGameId
+            ?: (apiClient.getRom(rommId) as? RomMResult.Success)?.data?.liteboxGameId?.takeIf { it.isNotBlank() }
+            ?: return@withContext null
+        if (game.liteboxGameId != key || game.liteboxSupersededBy != null) {
+            gameDao.insert(game.copy(liteboxGameId = key, liteboxSupersededBy = null))
+        }
+        val siblings = gameDao.getKeyedSiblings(game.platformId, key, game.id) +
+            gameDao.getUnkeyedSiblingsByTitle(game.platformId, game.title, game.id)
+        var hidden = 0
+        for (s in siblings) {
+            if (s.liteboxSupersededBy == rommId && s.liteboxGameId == key) continue
+            gameDao.insert(s.copy(liteboxGameId = key, liteboxSupersededBy = rommId))
+            hidden++
+        }
+        if (hidden > 0) {
+            Logger.info(TAG, "hideSiblingVersions: ${game.title} - $hidden other version row(s) hidden behind rommId $rommId")
+        }
+        key
+    }
+
+    /**
      * Keeps a game whose rom left the server, under a synthetic id so nothing downstream
      * mistakes it for a synced one. Its sync rows go: they address a rom that no longer
      * answers, and leaving them is what makes a device retry an upload against a dead id

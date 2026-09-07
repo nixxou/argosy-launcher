@@ -35,7 +35,7 @@ internal fun LiteBoxVersion.toRow() = VersionPickerRow(
     isPinned = isPinned,
     isDrillable = mayHaveRoms,
     appId = appId,
-    path = ""
+    path = path
 )
 
 internal fun LiteBoxRomEntry.toRow(appId: String) = VersionPickerRow(

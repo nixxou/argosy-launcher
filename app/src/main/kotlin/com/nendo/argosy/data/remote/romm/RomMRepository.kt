@@ -238,6 +238,9 @@ class RomMRepository @Inject constructor(
     suspend fun liteBoxListVersions(romId: Long): RomMResult<List<LiteBoxVersion>> =
         liteBoxService.listVersions(romId)
 
+    /** See RomMLibrarySyncService.hideSiblingVersions - the open-time hide of a game's other versions. */
+    suspend fun liteBoxHideSiblingVersions(gameId: Long): String? = librarySyncService.hideSiblingVersions(gameId)
+
     suspend fun liteBoxListRomsInVersion(romId: Long, appId: String?): RomMResult<List<LiteBoxRomEntry>> =
         liteBoxService.listRomsInVersion(romId, appId)
 
