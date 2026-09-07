@@ -11,6 +11,16 @@ Sync your entire game library from your self-hosted [RomM](https://github.com/ro
 
 **[Read the Wiki](https://github.com/rommapp/argosy-launcher/wiki)** for setup guides, emulator configuration, and troubleshooting.
 
+> **This is a fork.** [nixxou/argosy-launcher](https://github.com/nixxou/argosy-launcher) adds
+> support for **LiteBox**, a LaunchBox plugin that serves a LaunchBox library over the RomM API.
+> Against a real RomM server the app behaves exactly like upstream; against LiteBox it also lets
+> you switch a game's version/ROM from the game page, keeps one visible row per LaunchBox game
+> across those switches, shows the ROM file name under the cover, fetches your RetroAchievements
+> login from the desktop, and uses LaunchBox's own Progress list as the game status. Everything
+> is gated behind a handshake the server must answer. See
+> **[docs/litebox-fork.md](docs/litebox-fork.md)** for the feature list, the wire contract, the
+> commit layout and how to rebase onto upstream.
+
 <img width="400" alt="Home Screen" src="https://github.com/user-attachments/assets/931e1f4a-e0a1-46a9-a7ce-e712c0d558cc" />
 
 ## Feature Highlights
