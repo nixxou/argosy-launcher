@@ -698,7 +698,9 @@ private fun HistoryRow(
                 }
             }
             // LiteBox server only (Mehdi, 2026-09-08): the desktop's own words for this save, then
-            // size and content md5 on one line - what tells two same-minute saves apart.
+            // size and the SAME short code the desktop prints on its own save cards - the first 8
+            // hex chars of the md5, uppercase, "# " prefix (EditGameWindowSaves.cs on LiteBox: not
+            // a CRC32, a truncated md5, but the same code so a save can be matched by eye either side).
             if (item.liteBoxDetails && !item.liteboxLabel.isNullOrBlank()) {
                 Text(
                     text = item.liteboxLabel,
@@ -709,8 +711,8 @@ private fun HistoryRow(
                 )
             }
             Text(
-                text = if (item.liteBoxDetails && item.contentHash != null) {
-                    formatSaveSize(item.size) + "  md5 " + item.contentHash.take(16)
+                text = if (item.liteBoxDetails && item.contentHash != null && item.contentHash.length >= 8) {
+                    formatSaveSize(item.size) + "  # " + item.contentHash.take(8).uppercase()
                 } else {
                     formatSaveSize(item.size)
                 },
