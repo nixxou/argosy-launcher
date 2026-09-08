@@ -1055,6 +1055,10 @@ private fun routeAboutConfirm(vm: SettingsViewModel, state: SettingsUiState): In
             vm.setSaveDebugLoggingEnabled(!state.saveDebugLoggingEnabled)
             return InputResult.handled(SoundType.TOGGLE)
         }
+        AboutItem.SaveDebugLoggingVerbose -> {
+            vm.setSaveDebugLoggingVerbose(!state.saveDebugLoggingVerbose)
+            return InputResult.handled(SoundType.TOGGLE)
+        }
         AboutItem.AppAffinity -> {
             vm.setAppAffinityEnabled(!state.appAffinityEnabled)
             return InputResult.handled(SoundType.TOGGLE)

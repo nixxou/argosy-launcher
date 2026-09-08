@@ -812,6 +812,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
                 fileLoggingPath = prefs.fileLoggingPath,
                 fileLogLevel = prefs.fileLogLevel,
                 saveDebugLoggingEnabled = prefs.saveDebugLoggingEnabled,
+                saveDebugLoggingVerbose = prefs.saveDebugLoggingVerbose,
                 appAffinityEnabled = prefs.appAffinityEnabled,
                 builtinVideo = it.builtinVideo.copy(
                     shader = refreshSettings.shader,

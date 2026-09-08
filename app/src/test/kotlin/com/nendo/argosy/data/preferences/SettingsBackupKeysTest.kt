@@ -87,7 +87,8 @@ class SettingsBackupKeysTest {
     )
 
     private val diagnostics = setOf(
-        "file_logging_enabled", "file_log_level", "save_debug_logging_enabled"
+        "file_logging_enabled", "file_log_level", "save_debug_logging_enabled",
+        "save_debug_logging_verbose"
     )
 
     private val excluded: Set<String> =

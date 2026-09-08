@@ -504,6 +504,10 @@
     <string name="settings_about_save_debug_title">Registro de depuración de guardados</string>
     <string name="settings_about_save_debug_subtitle_on">Se registran las operaciones de guardado detalladas</string>
     <string name="settings_about_save_debug_subtitle_off">Registra la sincronización de guardados, la caché y los eventos de canal</string>
+    <string name="settings_about_save_debug_verbose_title">Registro detallado de restauraciones</string>
+    <string name="settings_about_save_debug_verbose_subtitle_off">Registra cada archivo leido o escrito en una restauracion, con rutas y hashes</string>
+    <string name="settings_about_save_debug_verbose_subtitle_on">Rutas y hashes de restauracion registrados</string>
+    <string name="settings_about_save_debug_verbose_subtitle_parent_off">Activa antes el registro de depuracion de guardados</string>
 
     <string name="settings_about_version_romm_value">v%1$s</string>
     <string name="settings_about_licenses_label">Licencias</string>

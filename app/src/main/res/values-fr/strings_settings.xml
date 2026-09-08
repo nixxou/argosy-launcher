@@ -494,6 +494,10 @@
     <string name="settings_about_save_debug_title">Journalisation de débogage des sauvegardes</string>
     <string name="settings_about_save_debug_subtitle_on">Opérations de sauvegarde détaillées consignées</string>
     <string name="settings_about_save_debug_subtitle_off">Consigner la synchro des sauvegardes, le cache et les événements de canal</string>
+    <string name="settings_about_save_debug_verbose_title">Journal detaille des restaurations</string>
+    <string name="settings_about_save_debug_verbose_subtitle_off">Journalise chaque fichier lu ou ecrit lors d’une restauration, chemins et empreintes compris</string>
+    <string name="settings_about_save_debug_verbose_subtitle_on">Chemins et empreintes des restaurations journalises</string>
+    <string name="settings_about_save_debug_verbose_subtitle_parent_off">Activez d’abord la journalisation des sauvegardes</string>
 
     <string name="settings_about_version_romm_value">v%1$s</string>
     <string name="settings_about_licenses_label">Licences</string>

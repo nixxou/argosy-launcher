@@ -438,6 +438,10 @@
     <string name="settings_about_save_debug_title">存檔偵錯記錄</string>
     <string name="settings_about_save_debug_subtitle_on">已記錄詳細的存檔操作</string>
     <string name="settings_about_save_debug_subtitle_off">記錄存檔同步、快取與頻道事件</string>
+    <string name="settings_about_save_debug_verbose_title">詳細復原日誌</string>
+    <string name="settings_about_save_debug_verbose_subtitle_off">記錄復原時讀取或寫入的每個檔案，包含路徑與雜湊值</string>
+    <string name="settings_about_save_debug_verbose_subtitle_on">已記錄復原路徑與雜湊值</string>
+    <string name="settings_about_save_debug_verbose_subtitle_parent_off">請先開啟存檔除錯日誌</string>
 
     <string name="settings_about_version_romm_value">v%1$s</string>
     <string name="settings_about_licenses_label">授權</string>

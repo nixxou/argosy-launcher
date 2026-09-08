@@ -1678,6 +1678,7 @@ class SettingsViewModel @Inject constructor(
     fun setFileLogLevel(level: LogLevel) = routeSetFileLogLevel(this, level)
     fun cycleFileLogLevel(direction: Int = 1) = routeCycleFileLogLevel(this, direction)
     fun setSaveDebugLoggingEnabled(enabled: Boolean) = routeSetSaveDebugLoggingEnabled(this, enabled)
+    fun setSaveDebugLoggingVerbose(enabled: Boolean) = routeSetSaveDebugLoggingVerbose(this, enabled)
 
     fun setPlatformEmulator(platformId: Long, platformSlug: String, emulator: InstalledEmulator?) =
         routeSetPlatformEmulator(this, platformId, platformSlug, emulator)

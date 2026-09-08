@@ -481,6 +481,10 @@
     <string name="settings_about_save_debug_title">सेव डीबग लॉगिंग</string>
     <string name="settings_about_save_debug_subtitle_on">विस्तृत सेव ऑपरेशन लॉग हो रहे हैं</string>
     <string name="settings_about_save_debug_subtitle_off">सेव सिंक, कैश और चैनल इवेंट लॉग करें</string>
+    <string name="settings_about_save_debug_verbose_title">विस्तृत पुनर्स्थापन लॉग</string>
+    <string name="settings_about_save_debug_verbose_subtitle_off">पुनर्स्थापन पर पढ़ी या लिखी गई हर फ़ाइल को पथ और हैश के साथ लॉग करें</string>
+    <string name="settings_about_save_debug_verbose_subtitle_on">पुनर्स्थापन पथ और हैश लॉग हो रहे हैं</string>
+    <string name="settings_about_save_debug_verbose_subtitle_parent_off">पहले सेव डीबग लॉगिंग चालू करें</string>
 
     <string name="settings_about_version_romm_value">v%1$s</string>
     <string name="settings_about_licenses_label">लाइसेंस</string>

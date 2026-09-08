@@ -28,10 +28,22 @@ object SaveDebugLogger {
     @Volatile
     private var enabled = false
 
+    // Mehdi, 2026-09-08: the restore-path events (full paths, md5 of every file read or
+    // written, the guard's own decisions) are a SECOND switch under the first -- they answer
+    // "where did these exact bytes come from", which is a debugging question, not the running
+    // record of sync activity the plain option already keeps. Off by default: they hash files
+    // on the restore path, and a log nobody asked for should not pay for that.
+    @Volatile
+    private var verbose = false
+
     private val timestampFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")
     private val dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
     val isEnabled: Boolean get() = enabled
+    /** The restore-path detail: both switches on. Every restore-path entry point below (the
+     * logRestore, logState, logBuiltin, logSaveLanded, logResumeStateGuard, logLiveState and
+     * logCacheRestoreFiles families) returns immediately when this is false. */
+    val isVerbose: Boolean get() = enabled && verbose
 
     init {
         scope.launch {
@@ -41,10 +53,11 @@ object SaveDebugLogger {
         }
     }
 
-    fun configure(versionName: String, logDirectory: String?, enabled: Boolean) {
+    fun configure(versionName: String, logDirectory: String?, enabled: Boolean, verbose: Boolean = false) {
         this.versionName = versionName
         this.logDirectory = logDirectory
         this.enabled = enabled && logDirectory != null
+        this.verbose = verbose
 
         if (!this.enabled) {
             closeCurrentFile()
@@ -626,6 +639,16 @@ object SaveDebugLogger {
     // question they answer is "where did it land, under what name, with what content". Cost is paid
     // only while the option is on - callers guard hashing with isEnabled.
 
+    /** The two files a cache restore touches, named in full with their hashes -- the ad-hoc
+     * logCustom this replaces looked like an ordinary event and escaped the verbose switch. */
+    fun logCacheRestoreFiles(gameId: Long, channel: String?, cacheId: Long, fromPath: String,
+                             toPath: String, cachedHash: String?) {
+        if (!isVerbose) return
+        log("CACHE_RESTORE_FILES", gameId, null, channel,
+            "cacheId=$cacheId, from=${describeFile(fromPath)}, to=${describeFile(toPath)}" +
+                ", cachedHash=${cachedHash ?: "null"}")
+    }
+
     /** MD5 of a file, or a size-only summary for a folder; null when unreadable. Only while enabled. */
     fun describeFile(path: String?): String {
         if (path == null) return "null"
@@ -635,7 +658,7 @@ object SaveDebugLogger {
             val files = f.walkTopDown().filter { it.isFile }.toList()
             return "$path (dir, ${files.size} files, ${formatBytesStable(files.sumOf { it.length() })})"
         }
-        val hash = if (enabled) fileHash(f) else null
+        val hash = if (isVerbose) fileHash(f) else null
         return "$path (${formatBytesStable(f.length())}, md5=${hash ?: "?"}, mtime=${formatMillis(f.lastModified())})"
     }
 
@@ -661,6 +684,7 @@ object SaveDebugLogger {
     /** A save restore (manual, from the save-management screen) starts: what was picked and where it lands. */
     fun logRestoreSaveBegin(gameId: Long, channel: String?, source: String, cacheId: Long?, serverSaveId: Long?,
                             emulatorId: String, targetPath: String, previousHash: String?) {
+        if (!isVerbose) return
         log("RESTORE_SAVE_BEGIN", gameId, null, channel,
             "source=$source, cacheId=$cacheId, rommSaveId=$serverSaveId, emulator=$emulatorId" +
             ", target=${describeFile(targetPath)}, previousHash=${previousHash ?: "null"}")
@@ -668,28 +692,33 @@ object SaveDebugLogger {
 
     fun logRestoreSaveDone(gameId: Long, channel: String?, targetPath: String, restoredHash: String?,
                            previousHash: String?, activated: String) {
+        if (!isVerbose) return
         val changed = if (previousHash == null || restoredHash == null) "unknown" else (previousHash != restoredHash).toString()
         log("RESTORE_SAVE_DONE", gameId, null, channel,
             "target=${describeFile(targetPath)}, restoredHash=${restoredHash ?: "null"}, changed=$changed, active=$activated")
     }
 
     fun logRestoreSaveFailed(gameId: Long, channel: String?, reason: String) {
+        if (!isVerbose) return
         log("RESTORE_SAVE_FAILED", gameId, null, channel, "reason=$reason")
     }
 
     /** The stale-resume guard's decision: did a content change wipe the built-in core's auto/resume states? */
     fun logResumeStateGuard(gameId: Long?, emulatorId: String, trigger: String, previousHash: String?,
                             newHash: String?, decision: String) {
+        if (!isVerbose) return
         log("RESUME_STATE_GUARD", gameId, null, null,
             "trigger=$trigger, emulator=$emulatorId, previous=${previousHash?.take(12) ?: "null"}" +
             ", new=${newHash?.take(12) ?: "null"}, decision=$decision")
     }
 
     fun logLiveStateDeleted(gameId: Long?, path: String, sizeBytes: Long) {
+        if (!isVerbose) return
         log("LIVE_STATE_DELETED", gameId, null, null, "file=$path (${formatBytesStable(sizeBytes)})")
     }
 
     fun logLiveStateSweep(gameId: Long?, emulatorId: String, dirs: List<String>, names: List<String>, deleted: Int) {
+        if (!isVerbose) return
         log("LIVE_STATE_SWEEP", gameId, null, null,
             "emulator=$emulatorId, deleted=$deleted, names=$names, dirs=$dirs")
     }
@@ -698,6 +727,7 @@ object SaveDebugLogger {
     fun logStateRestoreBegin(gameId: Long, cacheId: Long, slot: Int, channel: String?, emulatorId: String,
                              cachedCore: String?, cachedVersion: String?, currentCore: String?, currentVersion: String?,
                              forced: Boolean) {
+        if (!isVerbose) return
         log("STATE_RESTORE_BEGIN", gameId, null, channel,
             "cacheId=$cacheId, slot=$slot, emulator=$emulatorId, cachedCore=$cachedCore/$cachedVersion" +
             ", currentCore=$currentCore/$currentVersion, forced=$forced")
@@ -705,17 +735,20 @@ object SaveDebugLogger {
 
     fun logStateRestored(gameId: Long, cacheId: Long, slot: Int, channel: String?, cacheFile: String,
                          targetPath: String, screenshot: Boolean) {
+        if (!isVerbose) return
         log("STATE_RESTORED", gameId, null, channel,
             "cacheId=$cacheId, slot=$slot, from=${describeFile(cacheFile)}, to=${describeFile(targetPath)}, screenshot=$screenshot")
     }
 
     fun logStateRestoreFailed(gameId: Long?, cacheId: Long, reason: String) {
+        if (!isVerbose) return
         log("STATE_RESTORE_FAILED", gameId, null, null, "cacheId=$cacheId, reason=$reason")
     }
 
     /** A live state file was copied into the state cache. */
     fun logStateCached(gameId: Long, slot: Int, channel: String?, emulatorId: String, coreId: String?,
                        sourcePath: String, cachePath: String, cacheId: Long?, screenshot: Boolean) {
+        if (!isVerbose) return
         log("STATE_CACHED", gameId, null, channel,
             "cacheId=$cacheId, slot=$slot, emulator=$emulatorId, core=$coreId, from=$sourcePath" +
             ", to=${describeFile(cachePath)}, screenshot=$screenshot")
@@ -724,12 +757,14 @@ object SaveDebugLogger {
     /** A state came down from the server into the cache (not yet on the emulator's disk). */
     fun logStateDownloaded(gameId: Long, rommStateId: Long, fileName: String, slot: Int, channel: String?,
                            cachePath: String, contentHash: String, cacheId: Long?) {
+        if (!isVerbose) return
         log("STATE_DOWNLOADED", gameId, null, channel,
             "rommStateId=$rommStateId, cacheId=$cacheId, file=$fileName, slot=$slot, to=$cachePath, md5=$contentHash")
     }
 
     /** A server save (or a cache hit standing in for it) landed on the emulator's disk. */
     fun logSaveLanded(gameId: Long, channel: String?, targetPath: String, serverHash: String?, viaCacheId: Long?) {
+        if (!isVerbose) return
         log("SAVE_LANDED", gameId, null, channel,
             "target=${describeFile(targetPath)}, serverHash=${serverHash ?: "null"}" +
             (viaCacheId?.let { ", viaCacheId=$it" } ?: ", via=network"))
@@ -740,27 +775,32 @@ object SaveDebugLogger {
     /** Which SRAM the built-in core starts from, and the .srm it was written to. */
     fun logBuiltinSramRestore(gameId: Long?, mode: String, source: String, cacheId: Long?, channel: String?,
                               bytes: ByteArray?, targetPath: String) {
+        if (!isVerbose) return
         log("BUILTIN_SRAM_RESTORE", gameId, null, channel,
             "mode=$mode, source=$source, cacheId=$cacheId, bytes=${bytes?.size ?: -1}" +
             ", md5=${bytes?.let { bytesHash(it) } ?: "null"}, target=$targetPath")
     }
 
     fun logBuiltinSramWrite(gameId: Long?, channel: String?, targetPath: String, bytes: Int, hash: String) {
+        if (!isVerbose) return
         log("BUILTIN_SRAM_WRITE", gameId, null, channel, "bytes=$bytes, md5=$hash, target=$targetPath")
     }
 
     fun logBuiltinSlotLoad(gameId: Long?, slot: Int, path: String, bytes: Int, hash: String?, outcome: String) {
+        if (!isVerbose) return
         log("BUILTIN_STATE_LOAD", gameId, null, null,
             "slot=$slot, file=$path, bytes=$bytes, md5=${hash ?: "?"}, outcome=$outcome")
     }
 
     fun logBuiltinSlotSave(gameId: Long?, slot: Int, path: String, bytes: Int, hash: String?, screenshot: Boolean) {
+        if (!isVerbose) return
         log("BUILTIN_STATE_SAVE", gameId, null, null,
             "slot=$slot, file=$path, bytes=$bytes, md5=${hash ?: "?"}, screenshot=$screenshot")
     }
 
     /** attemptAutoRestore's decisions at launch: which file, why it was loaded, skipped or discarded. */
     fun logBuiltinAutoRestore(gameId: Long?, decision: String, path: String?, details: String? = null) {
+        if (!isVerbose) return
         log("BUILTIN_AUTO_RESTORE", gameId, null, null,
             "decision=$decision" + (path?.let { ", file=${describeFile(it)}" } ?: "") + (details?.let { ", $it" } ?: ""))
     }

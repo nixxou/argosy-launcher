@@ -133,6 +133,7 @@ class UserPreferencesRepository @Inject constructor(
             fileLoggingPath = app.fileLoggingPath,
             fileLogLevel = app.fileLogLevel,
             saveDebugLoggingEnabled = sync.saveDebugLoggingEnabled,
+            saveDebugLoggingVerbose = sync.saveDebugLoggingVerbose,
             saveWatcherEnabled = sync.saveWatcherEnabled,
             boxArtShape = display.boxArtShape,
             boxArtCornerRadius = display.boxArtCornerRadius,
@@ -373,6 +374,7 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setStateCacheEnabled(enabled: Boolean) = syncPrefs.setStateCacheEnabled(enabled)
     suspend fun setSaveCacheLimit(limit: Int) = syncPrefs.setSaveCacheLimit(limit)
     suspend fun setSaveDebugLoggingEnabled(enabled: Boolean) = syncPrefs.setSaveDebugLoggingEnabled(enabled)
+    suspend fun setSaveDebugLoggingVerbose(enabled: Boolean) = syncPrefs.setSaveDebugLoggingVerbose(enabled)
     suspend fun setImageCachePath(path: String?) = syncPrefs.setImageCachePath(path)
     suspend fun setAndroidDataSafUri(uri: String?) = syncPrefs.setAndroidDataSafUri(uri)
     fun saveWatcherEnabled(): Flow<Boolean> = syncPrefs.saveWatcherEnabled()
@@ -765,6 +767,7 @@ data class UserPreferences(
     val fileLoggingPath: String? = null,
     val fileLogLevel: LogLevel = LogLevel.INFO,
     val saveDebugLoggingEnabled: Boolean = false,
+    val saveDebugLoggingVerbose: Boolean = false,
     val saveWatcherEnabled: Boolean = false,
     val boxArtShape: BoxArtShape = BoxArtShape.STANDARD,
     val boxArtCornerRadius: BoxArtCornerRadius = BoxArtCornerRadius.MEDIUM,

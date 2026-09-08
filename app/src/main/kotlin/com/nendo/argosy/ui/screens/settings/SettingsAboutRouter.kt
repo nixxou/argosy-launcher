@@ -171,6 +171,13 @@ internal fun routeSetSaveDebugLoggingEnabled(vm: SettingsViewModel, enabled: Boo
     vm._uiState.update { it.copy(saveDebugLoggingEnabled = enabled) }
 }
 
+internal fun routeSetSaveDebugLoggingVerbose(vm: SettingsViewModel, enabled: Boolean) {
+    vm.viewModelScope.launch {
+        vm.preferencesRepository.setSaveDebugLoggingVerbose(enabled)
+    }
+    vm._uiState.update { it.copy(saveDebugLoggingVerbose = enabled) }
+}
+
 internal fun routeCheckForUpdates(vm: SettingsViewModel) {
     if (com.nendo.argosy.BuildConfig.DEBUG) return
 

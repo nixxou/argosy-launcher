@@ -43,6 +43,7 @@ data class SyncPreferences(
     val saveCacheLimit: Int = 10,
     val saveWatcherEnabled: Boolean = false,
     val saveDebugLoggingEnabled: Boolean = false,
+    val saveDebugLoggingVerbose: Boolean = false,
     val imageCachePath: String? = null,
     val androidDataSafUri: String? = null,
     val socialSessionToken: String? = null,
@@ -106,6 +107,7 @@ class SyncPreferencesRepository @Inject constructor(
         val SAVE_CACHE_LIMIT = intPreferencesKey("save_cache_limit")
         val SAVE_WATCHER_ENABLED = booleanPreferencesKey("save_watcher_enabled")
         val SAVE_DEBUG_LOGGING_ENABLED = booleanPreferencesKey("save_debug_logging_enabled")
+        val SAVE_DEBUG_LOGGING_VERBOSE = booleanPreferencesKey("save_debug_logging_verbose")
         val IMAGE_CACHE_PATH = stringPreferencesKey("image_cache_path")
         val ANDROID_DATA_SAF_URI = stringPreferencesKey("android_data_saf_uri")
         val SOCIAL_SESSION_TOKEN = stringPreferencesKey("social_session_token")
@@ -299,6 +301,7 @@ class SyncPreferencesRepository @Inject constructor(
             saveCacheLimit = prefs[Keys.SAVE_CACHE_LIMIT] ?: 10,
             saveWatcherEnabled = prefs[Keys.SAVE_WATCHER_ENABLED] ?: false,
             saveDebugLoggingEnabled = prefs[Keys.SAVE_DEBUG_LOGGING_ENABLED] ?: false,
+            saveDebugLoggingVerbose = prefs[Keys.SAVE_DEBUG_LOGGING_VERBOSE] ?: false,
             imageCachePath = prefs[Keys.IMAGE_CACHE_PATH],
             androidDataSafUri = prefs[Keys.ANDROID_DATA_SAF_URI],
             socialSessionToken = prefs[Keys.SOCIAL_SESSION_TOKEN],
@@ -554,6 +557,10 @@ class SyncPreferencesRepository @Inject constructor(
 
     suspend fun setSaveDebugLoggingEnabled(enabled: Boolean) {
         dataStore.edit { it[Keys.SAVE_DEBUG_LOGGING_ENABLED] = enabled }
+    }
+
+    suspend fun setSaveDebugLoggingVerbose(enabled: Boolean) {
+        dataStore.edit { it[Keys.SAVE_DEBUG_LOGGING_VERBOSE] = enabled }
     }
 
     suspend fun setImageCachePath(path: String?) {

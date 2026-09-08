@@ -94,6 +94,11 @@ internal sealed class AboutItem(
         section = "debug",
         visibleWhen = { it.hasLogPath }
     )
+    data object SaveDebugLoggingVerbose : AboutItem(
+        key = "saveDebugLoggingVerbose",
+        section = "debug",
+        visibleWhen = { it.hasLogPath }
+    )
     data object AppAffinity : AboutItem("appAffinity", "debug")
 
     companion object {
@@ -107,7 +112,8 @@ internal sealed class AboutItem(
                 VersionHeader, VersionInfo, CheckUpdates, ChangelogPreview, BetaUpdates,
                 BackupSpacer, BackupHeader, ExportSettings, ImportSettings,
                 SystemSpacer, SystemHeader, SystemizeHelper, RestartApp,
-                SectionSpacer, DebugHeader, FileLogging, LogLevel, SaveDebugLogging
+                SectionSpacer, DebugHeader, FileLogging, LogLevel, SaveDebugLogging,
+                SaveDebugLoggingVerbose
             )
     }
 }
@@ -349,6 +355,20 @@ fun AboutSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     isEnabled = uiState.saveDebugLoggingEnabled,
                     isFocused = isFocused(item),
                     onToggle = { viewModel.setSaveDebugLoggingEnabled(it) }
+                )
+
+                AboutItem.SaveDebugLoggingVerbose -> SwitchPreference(
+                    title = stringResource(R.string.settings_about_save_debug_verbose_title),
+                    subtitle = if (!uiState.saveDebugLoggingEnabled) {
+                        stringResource(R.string.settings_about_save_debug_verbose_subtitle_parent_off)
+                    } else if (uiState.saveDebugLoggingVerbose) {
+                        stringResource(R.string.settings_about_save_debug_verbose_subtitle_on)
+                    } else {
+                        stringResource(R.string.settings_about_save_debug_verbose_subtitle_off)
+                    },
+                    isEnabled = uiState.saveDebugLoggingVerbose,
+                    isFocused = isFocused(item),
+                    onToggle = { viewModel.setSaveDebugLoggingVerbose(it) }
                 )
 
                 AboutItem.AppAffinity -> SwitchPreference(

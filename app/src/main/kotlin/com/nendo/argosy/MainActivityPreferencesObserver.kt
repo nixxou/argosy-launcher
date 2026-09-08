@@ -39,7 +39,8 @@ class MainActivityPreferencesObserver(
                 SaveDebugLogger.configure(
                     versionName = BuildConfig.VERSION_NAME,
                     logDirectory = prefs.fileLoggingPath,
-                    enabled = prefs.saveDebugLoggingEnabled
+                    enabled = prefs.saveDebugLoggingEnabled,
+                    verbose = prefs.saveDebugLoggingVerbose
                 )
                 ambientAudioManager.setEnabled(prefs.ambientAudioEnabled)
                 ambientAudioManager.setVolume(prefs.ambientAudioVolume)

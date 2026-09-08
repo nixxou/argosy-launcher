@@ -470,6 +470,10 @@
     <string name="settings_about_save_debug_title">存档调试日志</string>
     <string name="settings_about_save_debug_subtitle_on">记录详细的存档操作</string>
     <string name="settings_about_save_debug_subtitle_off">记录存档同步、缓存与频道事件</string>
+    <string name="settings_about_save_debug_verbose_title">详细恢复日志</string>
+    <string name="settings_about_save_debug_verbose_subtitle_off">记录恢复时读取或写入的每个文件，包含路径与哈希</string>
+    <string name="settings_about_save_debug_verbose_subtitle_on">已记录恢复路径与哈希</string>
+    <string name="settings_about_save_debug_verbose_subtitle_parent_off">请先开启存档调试日志</string>
 
     <string name="settings_about_version_romm_value">v%1$s</string>
     <string name="settings_about_licenses_label">许可证</string>

@@ -300,6 +300,8 @@ internal class LightSectionsInput(
             }
             AboutItem.SaveDebugLogging ->
                 return toggleLeftRight(direction, state.saveDebugLoggingEnabled) { viewModel.setSaveDebugLoggingEnabled(it) }
+            AboutItem.SaveDebugLoggingVerbose ->
+                return toggleLeftRight(direction, state.saveDebugLoggingVerbose) { viewModel.setSaveDebugLoggingVerbose(it) }
             AboutItem.AppAffinity ->
                 return toggleLeftRight(direction, state.appAffinityEnabled) { viewModel.setAppAffinityEnabled(it) }
             else -> {}
