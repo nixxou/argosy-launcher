@@ -158,6 +158,21 @@ class GetUnifiedSavesUseCase @Inject constructor(
                 null
             }
 
+            // Mehdi, 2026-09-08: a LIVE slot's id is a stable hash of (game, group, kind), minted once
+            // and never changed by content moving on -- RommAssetsApi names "the group's living file",
+            // not one version of it. So a cache once linked to that id would otherwise be trusted
+            // forever, its own stale timestamp shown below even after the desktop's play moved the
+            // live file well past it (measured: a fresh write at 01:41 never reached the tablet's
+            // history, every request kept re-confirming the SAME id against the SAME old cache row).
+            // Comparing hashes catches it: LiteBox's content_hash is uppercase, ours lowercase, hence
+            // the case-insensitive check. A real difference means this cache no longer describes what
+            // that id points to -- treat it as unmatched so the fresh content gets its own entry below
+            // (and, once cached, its own history point) instead of hiding behind this one for ever.
+            val serverContentChanged = matchingServer != null &&
+                !cache.contentHash.isNullOrBlank() && !matchingServer.contentHash.isNullOrBlank() &&
+                !cache.contentHash.equals(matchingServer.contentHash, ignoreCase = true)
+            val effectiveMatch = matchingServer?.takeUnless { serverContentChanged }
+
             // A null-channel cache with nothing newer under it IS the autosave/latest entry (server
             // saves classify the very same way — isLatestSlot treats "autosave" as the latest, not a
             // named channel), not history: only an OLDER null-channel cache is truly archival. Without
@@ -168,28 +183,28 @@ class GetUnifiedSavesUseCase @Inject constructor(
             // autosave save that was actually the newest thing that existed.
             val localIsArchival = channelName == null && !isMostRecentForChannel && !cache.isHardcore
 
-            if (matchingServer != null) {
-                usedServerIds.add(matchingServer.id)
+            if (effectiveMatch != null) {
+                usedServerIds.add(effectiveMatch.id)
                 val isLatest = !localIsArchival &&
-                    isLatestSlot(matchingServer.slot, matchingServer.fileName, romBaseName)
+                    isLatestSlot(effectiveMatch.slot, effectiveMatch.fileName, romBaseName)
                 val serverChannelName = if (isLatest) null
-                    else matchingServer.slot ?: SaveSyncApiClient.parseServerChannelNameForSync(matchingServer.fileName, romBaseName)
+                    else effectiveMatch.slot ?: SaveSyncApiClient.parseServerChannelNameForSync(effectiveMatch.fileName, romBaseName)
                 val mergedChannelName = if (localIsArchival) null else (channelName ?: serverChannelName)
                 val isLocked = !localIsArchival && (mergedChannelName != null || cache.isLocked)
                 val deviceSyncCurrent = saveSyncRepository.getDeviceId()?.let { devId ->
-                    matchingServer.deviceSyncs?.find { it.deviceId == devId }?.isCurrent
+                    effectiveMatch.deviceSyncs?.find { it.deviceId == devId }?.isCurrent
                 }
-                val slotKey = resolveSlotKey(matchingServer.slot, matchingServer.fileName, romBaseName)
+                val slotKey = resolveSlotKey(effectiveMatch.slot, effectiveMatch.fileName, romBaseName)
                 claimedSlots.add(slotKey)
                 result.add(
                     UnifiedSaveEntry(
                         localCacheId = cache.id,
-                        serverSaveId = matchingServer.id,
+                        serverSaveId = effectiveMatch.id,
                         timestamp = cache.cachedAt,
                         size = cache.saveSize,
                         channelName = mergedChannelName,
                         source = UnifiedSaveEntry.Source.BOTH,
-                        serverFileName = matchingServer.fileName,
+                        serverFileName = effectiveMatch.fileName,
                         isLatest = isLatest,
                         isLocked = isLocked,
                         isHardcore = cache.isHardcore,
@@ -198,8 +213,8 @@ class GetUnifiedSavesUseCase @Inject constructor(
                         isUserCreatedSlot = !localIsArchival && cache.isLocked,
                         isCurrent = deviceSyncCurrent ?: false,
                         isArchival = localIsArchival,
-                        contentHash = cache.contentHash ?: matchingServer.contentHash,
-                        liteboxLabel = matchingServer.liteboxLabel
+                        contentHash = cache.contentHash ?: effectiveMatch.contentHash,
+                        liteboxLabel = effectiveMatch.liteboxLabel
                     )
                 )
             } else {
