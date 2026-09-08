@@ -182,6 +182,18 @@ interface SaveCacheDao {
     """)
     suspend fun getMostRecent(gameId: Long, ownerUserId: Long?): SaveCacheEntity?
 
+    // Mehdi, 2026-09-08 ("il faut faire respecter autosave par defaut"): the autosave/latest bucket is
+    // channelName IS NULL (SaveDownloader never stores the literal string "autosave" locally, only
+    // null) -- scoped the same way GetUnifiedSavesUseCase.resolveActiveEntry already treats "no
+    // explicit channel" as its own exact coordinate, never "whichever channel is newest overall".
+    @Query("""
+        SELECT * FROM save_cache
+        WHERE gameId = :gameId AND channelName IS NULL
+          AND (ownerUserId IS NULL OR ownerUserId = :ownerUserId)
+        ORDER BY cachedAt DESC LIMIT 1
+    """)
+    suspend fun getMostRecentAutosave(gameId: Long, ownerUserId: Long?): SaveCacheEntity?
+
     @Query("""
         SELECT * FROM save_cache
         WHERE gameId = :gameId AND saveSize = :size AND cachedAt >= :fileMtime

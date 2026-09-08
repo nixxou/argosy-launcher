@@ -260,8 +260,14 @@ class SaveStateManager(
             Log.d(TAG, "RESUME: Using active save cacheId=${activeSave.id} channel='${activeSave.channelName}'")
             activeSave
         } else {
-            Log.d(TAG, "RESUME: No active save, looking for most recent save overall")
-            saveCacheManager.getMostRecentSave(gameId)
+            // Mehdi, 2026-09-08 ("il faut faire respecter autosave par defaut"): "no channel chosen"
+            // is the autosave bucket itself, not "whichever channel happens to be newest" -- the same
+            // exact-coordinate rule GetUnifiedSavesUseCase.resolveActiveEntry already applies for what
+            // the UI CALLS the active save. Before this the two disagreed: the Saves screen could say
+            // "autosave" while a session that never touched it launched straight into a named
+            // channel's content just because it was the most recently cached thing for this game.
+            Log.d(TAG, "RESUME: No active save, looking for most recent save in the autosave bucket")
+            saveCacheManager.getMostRecentAutosaveSave(gameId)
         }
 
         if (targetSave != null) {
@@ -279,7 +285,7 @@ class SaveStateManager(
             if (bytes != null) {
                 getSramFile().writeBytes(bytes)
                 Log.d(TAG, "RESUME: Restored save (${bytes.size} bytes, hardcore=${targetSave.isHardcore})")
-                com.nendo.argosy.util.SaveDebugLogger.logBuiltinSramRestore(gameId.takeIf { it >= 0 }, "RESUME", if (activeSave != null) "active cache" else "most recent cache (no active)", targetSave.id, targetSave.channelName, bytes, getSramFile().absolutePath)
+                com.nendo.argosy.util.SaveDebugLogger.logBuiltinSramRestore(gameId.takeIf { it >= 0 }, "RESUME", if (activeSave != null) "active cache" else "most recent autosave-bucket cache (no active)", targetSave.id, targetSave.channelName, bytes, getSramFile().absolutePath)
             }
             return RestoreResult(bytes, switchToHardcore)
         } else {

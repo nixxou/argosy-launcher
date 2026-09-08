@@ -885,6 +885,14 @@ class SaveCacheManager @Inject constructor(
     suspend fun getMostRecentSave(gameId: Long): SaveCacheEntity? =
         saveCacheDao.getMostRecent(gameId, syncPreferencesRepository.getRommUserId())
 
+    /** The autosave/latest bucket's own newest cache -- what a RESUME with no channel ever chosen
+     * should launch from (see SaveStateManager.restoreResumeSave). Never a named channel's save,
+     * however much more recent that one is: matches GetUnifiedSavesUseCase.resolveActiveEntry's own
+     * "no explicit channel names autosave" rule, so the UI's "active save" and what actually loads
+     * agree. */
+    suspend fun getMostRecentAutosaveSave(gameId: Long): SaveCacheEntity? =
+        saveCacheDao.getMostRecentAutosave(gameId, syncPreferencesRepository.getRommUserId())
+
     suspend fun getByTimestamp(gameId: Long, timestampMillis: Long): SaveCacheEntity? =
         saveCacheDao.getByTimestamp(gameId, timestampMillis)
 
